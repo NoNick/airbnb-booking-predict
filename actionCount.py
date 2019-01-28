@@ -22,7 +22,8 @@ start = datetime.now()
 user_id = ''
 cntVector = []
 pos = 0
-for i, session in sessions.iterrows():
+i = 0
+for _, session in sessions.iterrows():
     if user_id != session['user_id']:
         if user_id != '':
             pos = pos + 1
@@ -30,6 +31,7 @@ for i, session in sessions.iterrows():
         result.iloc[pos, 0] = user_id
     actionNumber = actions.index(session['action_full']) + 1
     result.iloc[pos, actionNumber] = result.iloc[pos, actionNumber] + 1
+    i = i + 1
     if i % 10000 == 0:
         print(("Processed %8d / %d (%.2f%%) actions, " + str(datetime.now() - start) + " per 10k")
               % (i, actionsTotal, i * 100 / actionsTotal))

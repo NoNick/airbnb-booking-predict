@@ -3,6 +3,8 @@ import numpy as np
 from datetime import datetime
 
 sessions = pd.read_csv("data/sessions.csv").drop(['device_type', 'secs_elapsed'], axis=1)
+sessions.dropna(subset=['user_id'], inplace=True)
+sessions.sort_values('user_id', inplace=True)
 sessions['action'].fillna('', inplace=True)
 sessions['action_detail'].fillna('', inplace=True)
 sessions['action_full'] = sessions['action'] + '$' + sessions['action_detail']

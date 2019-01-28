@@ -11,8 +11,9 @@ sessions['action_full'] = sessions['action'] + '$' + sessions['action_detail']
 # make sure there are no more than one unique action_detail per action_full
 # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
 #      print(sessions.groupby('action_full').action_type.nunique())
+sessions.drop(['action', 'action_type', 'action_detail'], axis=1, inplace=True)
 actions = list(sessions['action_full'].unique())
-actionsTotal = len(sessions['action'])
+actionsTotal = len(sessions['action_full'])
 actN = len(actions)
 usersN = sessions['user_id'].nunique()
 result = pd.DataFrame(0, index=np.arange(usersN), columns=['user_id']+actions)

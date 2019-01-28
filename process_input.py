@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 from pandas._libs.index import datetime
 
+# if an action was used less than this number across all sessions, drop it from features
+ACTION_COUNT_DROP_THRESHOLD = 100
 
 def normalizeData(data):
     data['date_account_created'] = normalizeDateColumn(data['date_account_created'], '%Y-%m-%d')
@@ -37,10 +39,12 @@ def normalizeData(data):
 
     return data
 
+
 def mapStrToOrdinals(column):
     uniques = np.unique(column.fillna('abracadabra')).tolist()
     uniquesWithIndices = {k: v + 1 for v, k in enumerate(uniques)}  # TODO: sort by frequency?
     return column.map(uniquesWithIndices)
+
 
 def normalizeDateColumn(column, dateFormat):
     column = pd.to_datetime(column, format=dateFormat)
@@ -51,7 +55,34 @@ def normalizeDateColumn(column, dateFormat):
     column = column.map(lambda x: x - min_value)
     return column
 
-data = pd.read_csv("data/train_users_2.csv").drop('date_first_booking', axis=1)
-normalizeData(data).to_csv("data/train_users_2_norm.csv", index=False)
+
+def dropLowCountColumns(table, minCount):
+    columnsToDrop = []
+    for column in table:
+        if np.issubdtype(table[column].dtype, np.number):
+            if table[column].sum() < minCount:
+                columnsToDrop.append(column)
+    return table.drop(columnsToDrop, axis=1)
+
+start = datetime.now()
+
+train = pd.read_csv("data/train_users_2.csv").drop('date_first_booking', axis=1)
+train = normalizeData(train)
 test = pd.read_csv("data/test_users.csv").drop('date_first_booking', axis=1)
-normalizeData(test).to_csv("data/test_users_norm.csv", index=False)
+test = normalizeData(test)
+
+actions = pd.read_csv("data/user_actions_count.csv")
+tmp = len(actions.columns)
+actions = dropLowCountColumns(actions, ACTION_COUNT_DROP_THRESHOLD)
+actions.set_index('user_id', inplace=True)
+print("Dropped %d actions due to rare use" % (tmp - len(actions.columns)))
+
+train = train.set_index('user_id').join(actions, how='inner')
+destinations = train.pop('country_destination')
+train['country_destination'] = destinations  # move column to the end
+train.to_csv("data/train_users_2_norm.csv")
+test = test.set_index('id').join(actions, how='inner')
+test.to_csv("data/test_users_norm.csv")
+print("%d features in total" % (len(train) - 1))
+
+print("Completed in " + str(datetime.now() - start))

@@ -4,35 +4,30 @@ import datetime
 from sklearn.metrics import log_loss
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 from xgboost.sklearn import XGBClassifier
 
-from ensemble import objf_ens_optA, EN_optA, objf_ens_optB, EN_optB
+from ensemble import EN_optA, EN_optB
 
 
 random_state = 1
 n_classes = 12  # Same number of classes as in Airbnb competition.
-data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1)[0:50000].fillna(0)
+data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(0)
 labels = data.pop('country_destination')
 
-# Spliting data into train and test sets.
-X, X_test, y, y_test = train_test_split(data, labels, test_size=0.2,
-                                        random_state=random_state)
+# Splitting data into train and test sets.
+X, X_test, y, y_test = train_test_split(data, labels, test_size=0.2, random_state=random_state)
 
-# Spliting train data into training and validation sets.
-X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.25,
-                                                      random_state=random_state)
+# Splitting train data into training and validation sets.
+X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.25, random_state=random_state)
 
 print('Data shape:')
-print('X_train: %s, X_valid: %s, X_test: %s \n' % (X_train.shape, X_valid.shape,
-                                                   X_test.shape))
+print('X_train: %s, X_valid: %s, X_test: %s \n' % (X_train.shape, X_valid.shape, X_test.shape))
 
 # Defining the classifiers
-clfs = {'LR': LogisticRegression(random_state=random_state, solver='lbfgs', n_jobs=3, verbose=1, multi_class='multinomial'),
-        'GBM': GradientBoostingClassifier(n_estimators=50, max_depth=9, random_state=random_state, verbose=1),
-        'XGB': XGBClassifier(max_depth=9, silent=False, n_jobs=3, nthread=3, subsample=.5, colsample_bytree=.5, verbose=1)}
+clfs = {'LR': LogisticRegression(random_state=random_state, solver='lbfgs', n_jobs=3, multi_class='multinomial'),
+        'XGB': XGBClassifier(max_depth=9, silent=False, n_jobs=3, nthread=3, subsample=.5, colsample_bytree=.5)}
 
 # predictions on the validation and test sets
 p_valid = []
@@ -46,6 +41,7 @@ for nm, clf in clfs.items():
     clf.fit(X_train, y_train)
     yv = clf.predict_proba(X_valid)
     p_valid.append(yv)
+    print(clf.classes_)
 
     # Second run. Training on (X, y) and predicting on X_test.
     clf.fit(X, y)
@@ -118,6 +114,29 @@ wB = np.round(w_enB.reshape((-1,n_classes)), decimals=2)
 wB = np.hstack((np.array(list(clfs.keys()), dtype=str).reshape(-1,1), wB))
 print(tabulate(wB, headers=['y%s'%(i) for i in range(n_classes)], tablefmt="orgtbl"))
 
+def top5(p, labels):
+    labelsRel = pd.DataFrame(np.argsort(p), columns=['rel'])
+    labelsRel['label'] = labels
+    return labelsRel.sort_values('rel')['label'][0:5].tolist()
+
+
+def getTops(probMatrix):
+    resultCountries = []
+    for prob in probMatrix:
+        resultCountries += top5(prob, enA.classes_)
+    return resultCountries
+
+
+def saveResult(ids, probMatrix, path):
+    f = open(path, "w+")
+    f.write("id,country\r\n")
+    countries = getTops(probMatrix)
+    ids = np.repeat(ids, 5).tolist()
+    for user_id, country in zip(ids, countries):
+        f.write(user_id + "," + country + "\r\n")
+    f.close()
+
+
 Xfinal = pd.read_csv('data/test_users_norm.csv').fillna(0)
 Xid = Xfinal.pop('id')
 p_final = []
@@ -125,5 +144,11 @@ for nm, clf in clfs.items():
      yf = clf.predict_proba(Xfinal)
      p_final.append(yf)
 Xpredicted = np.hstack(p_final)
-(pd.DataFrame(cc_optA.predict_proba(Xpredicted))).to_csv('predict/enA.csv', index=False)
-(pd.DataFrame(cc_optB.predict_proba(Xpredicted))).to_csv('predict/enB.csv', index=False)
+print("Test data classified, weighting and formatting now")
+
+start = datetime.datetime.now()
+saveResult(Xid, cc_optA.predict_proba(Xpredicted), 'predict/enA.csv')
+print("Ensemble A submission is ready in " + str(datetime.datetime.now() - start))
+start = datetime.datetime.now()
+saveResult(Xid, cc_optB.predict_proba(Xpredicted), 'predict/enB.csv')
+print("Ensemble B submission is ready in " + str(datetime.datetime.now() - start))

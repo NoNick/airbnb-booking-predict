@@ -39,7 +39,7 @@ class EN_optA(BaseEstimator):
     $w_1, w_2, ..., w_n$; such that minimizes $log\_loss(y_T, y_E)$,
     where $y_E = X_1*w_1 + X_2*w_2 +...+ X_n*w_n$ and $y_T$ is the true solution.
     """
-    classes_ = ['US', 'FR', 'CA', 'GB', 'ES', 'IT', 'PT', 'NL', 'DE', 'AU', 'NDF', 'other']
+    classes_ = ['AU', 'CA', 'DE', 'ES', 'FR', 'GB', 'IT', 'NDF', 'NL', 'PT', 'US', 'other']  # TODO
 
     def __init__(self, n_class=12):
         super(EN_optA, self).__init__()
@@ -140,7 +140,7 @@ class EN_optB(BaseEstimator):
     $log\_loss(y_T, y_E)$, where $y_E = X_{11}*w_{11} +... + X_{21}*w_{21} + ...
     + X_{nm}*w_{nm}$ and and $y_T$ is the true solution.
     """
-    classes_ = ['US', 'FR', 'CA', 'GB', 'ES', 'IT', 'PT', 'NL', 'DE', 'AU', 'NDF', 'other']
+    classes_ = ['AU', 'CA', 'DE', 'ES', 'FR', 'GB', 'IT', 'NDF', 'NL', 'PT', 'US', 'other']  # TODO
 
     def __init__(self, n_class=12):
         super(EN_optB, self).__init__()

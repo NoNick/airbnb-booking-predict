@@ -32,3 +32,5 @@ for i, session in sessions.iterrows():
         print(("Processed %8d / %d (%.2f%%) actions, " + str(datetime.now() - start) + " per 10k")
               % (i, actionsTotal, i * 100 / actionsTotal))
         start = datetime.now()
+
+result.to_csv("data/user_actions_count.csv", index=False)

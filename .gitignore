@@ -2,3 +2,8 @@ venv/**
 .idea
 ..bfg-report
 data/sessions.csv
+data/test_users_norm.csv
+data/train_users_2_norm.csv
+data/user_actions_count.csv
+predict/enA.csv
+predict/enB.csv

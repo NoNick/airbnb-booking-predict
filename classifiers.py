@@ -14,13 +14,13 @@ def genClassifiersList(N):
             random_state=random_state,
             solver='lbfgs',
             max_iter=200,
-            n_jobs=3,
+            n_jobs=4,
             multi_class='multinomial'))
         result.append(XGBClassifier(
             max_depth=9,
             silent=True,
-            n_jobs=3,
-            nthread=3,
+            n_jobs=4,
+            nthread=4,
             subsample=.5,
             colsample_bytree=.5))
     return result

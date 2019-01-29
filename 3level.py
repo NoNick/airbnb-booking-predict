@@ -51,7 +51,7 @@ print(datetime.datetime.now() - start)
 start = datetime.datetime.now()
 
 # Calibrated version of EN_optA
-cc_optA = CalibratedClassifierCV(enA, method='isotonic', cv=5)
+cc_optA = CalibratedClassifierCV(enA, method='isotonic', cv=3)
 cc_optA.fit(XV, y_valid)
 y_ccA = cc_optA.predict_proba(XT)
 print('{:20s} {:2s} {:1.7f}'.format('Calibrated_EN_optA:', 'logloss  =>', log_loss(y_test, y_ccA)))
@@ -68,7 +68,7 @@ print(datetime.datetime.now() - start)
 start = datetime.datetime.now()
 
 #Calibrated version of EN_optB
-cc_optB = CalibratedClassifierCV(enB, method='isotonic', cv=5)
+cc_optB = CalibratedClassifierCV(enB, method='isotonic', cv=3)
 cc_optB.fit(XV, y_valid)
 y_ccB = cc_optB.predict_proba(XT)
 print('{:20s} {:2s} {:1.7f}'.format('Calibrated_EN_optB:', 'logloss  =>', log_loss(y_test, y_ccB)))

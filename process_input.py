@@ -4,7 +4,7 @@ import numpy as np
 from pandas._libs.index import datetime
 
 # if an action was used less than this number across all sessions, drop it from features
-ACTION_COUNT_DROP_THRESHOLD = 30
+ACTION_COUNT_DROP_THRESHOLD = 300
 
 def normalizeData(data):
     data['date_account_created'] = normalizeDateColumn(data['date_account_created'], '%Y-%m-%d')
@@ -77,12 +77,12 @@ actions = dropLowCountColumns(actions, ACTION_COUNT_DROP_THRESHOLD)
 actions.set_index('user_id', inplace=True)
 print("Dropped %d actions due to rare use" % (tmp - len(actions.columns)))
 
-train = train.set_index('user_id').join(actions, how='left')
+# train = train.set_index('user_id').join(actions, how='left')
 destinations = train.pop('country_destination')
 train['country_destination'] = destinations  # move column to the end
-train.to_csv("data/train_users_2_norm.csv")
-test = test.set_index('id').join(actions, how='left')
-test.to_csv("data/test_users_norm.csv")
+train.to_csv("data/train_users_2_norm.csv", index=False)
+# test = test.set_index('id').join(actions, how='left')
+test.to_csv("data/test_users_norm.csv", index=False)
 print("%d features in total" % (len(train.columns) - 1))
 
 print("Completed in " + str(datetime.now() - start))

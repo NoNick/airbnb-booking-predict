@@ -3,17 +3,17 @@ import pandas as pd
 import datetime
 from sklearn.metrics import log_loss
 
-from sklearn.linear_model import LogisticRegression
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
-from xgboost.sklearn import XGBClassifier
 
 from ensemble import EN_optA, EN_optB
+from classifiers import genClassifiersList, learnEachTwoOnSingleFeature, predictEachTwoOnSingleFeature, random_state
+from submission_utils import saveResult
 
+NA_CONST = -1
 
-random_state = 1
 n_classes = 12  # Same number of classes as in Airbnb competition.
-data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(0)
+data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(NA_CONST)
 labels = data.pop('country_destination')
 
 # Splitting data into train and test sets.
@@ -26,32 +26,11 @@ print('Data shape:')
 print('X_train: %s, X_valid: %s, X_test: %s \n' % (X_train.shape, X_valid.shape, X_test.shape))
 
 # Defining the classifiers
-clfs = {'LR': LogisticRegression(random_state=random_state, solver='lbfgs', n_jobs=3, multi_class='multinomial'),
-        'XGB': XGBClassifier(max_depth=9, silent=False, n_jobs=4, nthread=4, subsample=.5, colsample_bytree=.5)}
-
-# predictions on the validation and test sets
-p_valid = []
-p_test = []
+clfs = genClassifiersList(X_train.shape[1])
 
 print('Performance of individual classifiers (1st layer) on X_test')
 print('------------------------------------------------------------')
-start = datetime.datetime.now()
-for nm, clf in clfs.items():
-#     First run. Training on (X_train, y_train) and predicting on X_valid.
-    clf.fit(X_train, y_train)
-    yv = clf.predict_proba(X_valid)
-    p_valid.append(yv)
-    print(clf.classes_)
-
-    # Second run. Training on (X, y) and predicting on X_test.
-    clf.fit(X, y)
-    yt = clf.predict_proba(X_test)
-    p_test.append(yt)
-
-    # Printing out the performance of the classifier
-    print('{:10s} {:2s} {:1.7f}'.format('%s: ' % (nm), 'logloss  =>', log_loss(y_test, yt)))
-    print(datetime.datetime.now() - start)
-    start = datetime.datetime.now()
+p_valid, p_test = learnEachTwoOnSingleFeature(clfs, X, y, X_train, y_train, X_valid, X_test, y_test)
 print('')
 
 print('Performance of optimization based ensemblers (2nd layer) on X_test')
@@ -100,55 +79,30 @@ print('')
 y_3l = (y_enA * 4./9.) + (y_ccA * 2./9.) + (y_enB * 2./9.) + (y_ccB * 1./9.)
 print('{:20s} {:2s} {:1.7f}'.format('3rd_layer:', 'logloss  =>', log_loss(y_test, y_3l)))
 print(datetime.datetime.now() - start)
-start = datetime.datetime.now()
 
 from tabulate import tabulate
 print('               Weights of EN_optA:')
 print('|---------------------------------------------|')
 wA = np.round(w_enA, decimals=2).reshape(1,-1)
-print(tabulate(wA, headers=clfs.keys(), tablefmt="orgtbl"))
+np.savetxt("predict/weightsA.csv", wA, delimiter=',')
+print(tabulate(wA, headers=range(0, len(clfs)), tablefmt="orgtbl"))
 print('')
 print('                                    Weights of EN_optB:')
 print('|-------------------------------------------------------------------------------------------|')
 wB = np.round(w_enB.reshape((-1,n_classes)), decimals=2)
-wB = np.hstack((np.array(list(clfs.keys()), dtype=str).reshape(-1,1), wB))
-print(tabulate(wB, headers=['y%s'%(i) for i in range(n_classes)], tablefmt="orgtbl"))
-
-def top5(p, labels):
-    labelsRel = pd.DataFrame(np.argsort(p), columns=['rel'])
-    labelsRel['label'] = labels
-    return labelsRel.sort_values('rel')['label'][0:5].tolist()
-
-
-def getTops(probMatrix):
-    resultCountries = []
-    for prob in probMatrix:
-        resultCountries += top5(prob, enA.classes_)
-    return resultCountries
-
-
-def saveResult(ids, probMatrix, path):
-    f = open(path, "w+")
-    f.write("id,country\r\n")
-    countries = getTops(probMatrix)
-    ids = np.repeat(ids, 5).tolist()
-    for user_id, country in zip(ids, countries):
-        f.write(user_id + "," + country + "\r\n")
-    f.close()
-
-
-Xfinal = pd.read_csv('data/test_users_norm.csv').fillna(0)
-Xid = Xfinal.pop('id')
-p_final = []
-for nm, clf in clfs.items():
-     yf = clf.predict_proba(Xfinal)
-     p_final.append(yf)
-Xpredicted = np.hstack(p_final)
-print("Test data classified, weighting and formatting now")
+np.savetxt("predict/weightsB.csv", wB, delimiter=',')
+wB = np.hstack((np.array(range(0, len(clfs)), dtype=str).reshape(-1, 1), wB))
+print(tabulate(wB, headers=['y%s' % i for i in range(n_classes)], tablefmt="orgtbl"))
 
 start = datetime.datetime.now()
-saveResult(Xid, cc_optA.predict_proba(Xpredicted), 'predict/enA.csv')
+X_final = pd.read_csv('data/test_users_norm.csv').fillna(NA_CONST)
+Xid = X_final.pop('id')
+X_predicted = predictEachTwoOnSingleFeature(clfs, X_final)
+print("Test data classified in " + str(datetime.datetime.now() - start) + ", weighting and formatting now")
+
+start = datetime.datetime.now()
+saveResult(Xid, cc_optA.predict_proba(X_predicted), 'predict/enA.csv')
 print("Ensemble A submission is ready in " + str(datetime.datetime.now() - start))
 start = datetime.datetime.now()
-saveResult(Xid, cc_optB.predict_proba(Xpredicted), 'predict/enB.csv')
+saveResult(Xid, cc_optB.predict_proba(X_predicted), 'predict/enB.csv')
 print("Ensemble B submission is ready in " + str(datetime.datetime.now() - start))

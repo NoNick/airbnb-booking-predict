@@ -4,7 +4,7 @@ import numpy as np
 from pandas._libs.index import datetime
 
 # if an action was used less than this number across all sessions, drop it from features
-ACTION_COUNT_DROP_THRESHOLD = 100
+ACTION_COUNT_DROP_THRESHOLD = 30
 
 def normalizeData(data):
     data['date_account_created'] = normalizeDateColumn(data['date_account_created'], '%Y-%m-%d')

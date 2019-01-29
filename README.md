@@ -7,4 +7,5 @@
 - Run **3level.py** to generate *predict/enA.csv* and *predict/enB.csv* submission data
 
 ## Score
-- LinRegression & XGB (each on whole set of features, commit 09b4fea) take less than hour to learn in 4 threads score **ndcg_5 = 0.20633**
+- Two classifiers on whole set of features (commit 09b4fea) take less than hour to learn in 4 threads and score **ndcg_5 = 0.20633**
+- Two classifiers (LinReg & XGB) per each of 13 features (branch 13features) take TDB in 4 threads and score **ndcg_5 = TBD**

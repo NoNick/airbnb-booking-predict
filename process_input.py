@@ -83,6 +83,6 @@ train['country_destination'] = destinations  # move column to the end
 train.to_csv("data/train_users_2_norm.csv", index=False)
 # test = test.set_index('id').join(actions, how='left')
 test.to_csv("data/test_users_norm.csv", index=False)
-print("%d features in total" % (len(train.columns) - 1))
+print("%d features in total" % (len(train.columns) - 2))
 
 print("Completed in " + str(datetime.now() - start))

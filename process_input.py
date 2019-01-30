@@ -4,7 +4,9 @@ import numpy as np
 from pandas._libs.index import datetime
 
 # if an action was used less than this number across all sessions, drop it from features
-ACTION_COUNT_DROP_THRESHOLD = 30
+from sklearn.preprocessing import LabelEncoder
+
+ACTION_COUNT_DROP_THRESHOLD = 100
 
 def normalizeData(data):
     data['date_account_created'] = normalizeDateColumn(data['date_account_created'], '%Y-%m-%d')
@@ -35,7 +37,10 @@ def normalizeData(data):
     data['first_affiliate_tracked'] = mapStrToOrdinals(data['first_affiliate_tracked'])
     data['signup_app'] = mapStrToOrdinals(data['signup_app'])
     data['first_device_type'] = mapStrToOrdinals(data['first_device_type'])
+    # data.drop('first_device_type', axis=1, inplace=True)
     data['first_browser'] = mapStrToOrdinals(data['first_browser'])
+
+    data.loc[(14 > data.age) & (data.age > 100), 'age'] = np.nan
 
     return data
 
@@ -60,9 +65,25 @@ def dropLowCountColumns(table, minCount):
     columnsToDrop = []
     for column in table:
         if np.issubdtype(table[column].dtype, np.number):
-            if table[column].sum() < minCount:
+            if table[column].astype(bool).sum(axis=0) < minCount:
                 columnsToDrop.append(column)
     return table.drop(columnsToDrop, axis=1)
+
+
+def getMostUsedDeviceByUserId():
+    sessions = pd.read_csv("data/sessions.csv")\
+        .drop(['action', 'action_type', 'action_detail', 'secs_elapsed'], axis=1)
+    result = sessions.groupby('user_id').agg(lambda x: x['device_type'].value_counts().index[0])
+    le = LabelEncoder()
+    result['device_type'] = le.fit_transform(result['device_type'])
+    return result
+
+
+def getSecsElapsedByUserId():
+    sessions = pd.read_csv("data/sessions.csv")\
+        .drop(['action', 'action_type', 'action_detail', 'device_type'], axis=1).fillna(0)
+    return sessions.groupby('user_id').agg(lambda x: x['secs_elapsed'].sum())
+
 
 start = datetime.now()
 
@@ -77,12 +98,21 @@ actions = dropLowCountColumns(actions, ACTION_COUNT_DROP_THRESHOLD)
 actions.set_index('user_id', inplace=True)
 print("Dropped %d actions due to rare use" % (tmp - len(actions.columns)))
 
-# train = train.set_index('user_id').join(actions, how='left')
+# usedDevice = getMostUsedDeviceByUserId()
+# elapsed = getSecsElapsedByUserId()
+print("Processed session data")
+
+
+def joinTables(src):
+    return src.join(actions, how='left')#.join(usedDevice, how='left')#.join(elapsed, how='left')
+
+
+train = joinTables(train.set_index('user_id'))
 destinations = train.pop('country_destination')
 train['country_destination'] = destinations  # move column to the end
-train.to_csv("data/train_users_2_norm.csv", index=False)
-# test = test.set_index('id').join(actions, how='left')
-test.to_csv("data/test_users_norm.csv", index=False)
+train.to_csv("data/train_users_2_norm.csv")
+test = joinTables(test.set_index('id'))
+test.to_csv("data/test_users_norm.csv")
 print("%d features in total" % (len(train.columns) - 2))
 
 print("Completed in " + str(datetime.now() - start))

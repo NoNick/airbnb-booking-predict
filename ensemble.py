@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.metrics import log_loss
 from sklearn.base import BaseEstimator
 from scipy.optimize import minimize
+from datetime import datetime
 
 def objf_ens_optA(w, Xs, y, n_class=12):
     """
@@ -39,7 +40,7 @@ class EN_optA(BaseEstimator):
     $w_1, w_2, ..., w_n$; such that minimizes $log\_loss(y_T, y_E)$,
     where $y_E = X_1*w_1 + X_2*w_2 +...+ X_n*w_n$ and $y_T$ is the true solution.
     """
-    classes_ = ['AU', 'CA', 'DE', 'ES', 'FR', 'GB', 'IT', 'NDF', 'NL', 'PT', 'US', 'other']  # TODO
+    classes_ = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
     def __init__(self, n_class=12):
         super(EN_optA, self).__init__()
@@ -127,7 +128,7 @@ def objf_ens_optB(w, Xs, y, n_class=12):
     for i in range(len(w)):
         sol[:, i % n_class] += Xs[int(i / n_class)][:, i % n_class] * w[i]
 
-        # Using log-loss as objective function (different objective functions can be used here).
+    # Using log-loss as objective function (different objective functions can be used here).
     score = log_loss(y, sol)
     return score
 
@@ -140,7 +141,7 @@ class EN_optB(BaseEstimator):
     $log\_loss(y_T, y_E)$, where $y_E = X_{11}*w_{11} +... + X_{21}*w_{21} + ...
     + X_{nm}*w_{nm}$ and and $y_T$ is the true solution.
     """
-    classes_ = ['AU', 'CA', 'DE', 'ES', 'FR', 'GB', 'IT', 'NDF', 'NL', 'PT', 'US', 'other']  # TODO
+    classes_ = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
     def __init__(self, n_class=12):
         super(EN_optB, self).__init__()
@@ -193,3 +194,39 @@ class EN_optB(BaseEstimator):
             y_pred[:, i % self.n_class] += \
                 Xs[int(i / self.n_class)][:, i % self.n_class] * self.w[i]
         return y_pred
+
+
+def normalize1(w, n_class=12):
+    w_range = np.arange(len(w)) % n_class
+    for i in range(n_class):
+        w[w_range == i] = w[w_range == i] / np.sum(w[w_range == i])
+
+
+def normalize2(w, n_class=12):
+    wLen = len(w)
+    sum = np.zeros(n_class)
+    i = 0
+    while i < wLen:
+        sum += w[i:(i + n_class)]
+        i += n_class
+    i = 0
+    while i < wLen:
+        w[i:(i + n_class)] /= sum
+        i += n_class
+
+
+def compare_normalize():
+    w1 = np.linspace(0, 100, 120000)
+    start = datetime.now()
+    for i in range(100):
+        normalize1(w1)
+    print(str(datetime.now() - start))
+
+    w2 = np.linspace(0, 100, 120000)
+    start = datetime.now()
+    for i in range(100):
+        normalize2(w2)
+    print(str(datetime.now() - start))
+
+    print(str(all(w1 == w2)))
+    print(str(sum(abs((w1 - w2)))))

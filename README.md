@@ -11,4 +11,4 @@
 ## Score
 - Two classifiers on whole set of features (commit 09b4fea) take less than hour to learn in 4 threads and score **ndcg_5 = 0.20633**
 - Two classifiers (LinReg & XGB) per each of 13 features (branch 13features) take 7 hrs in 4 threads and score **ndcg_5 = 0.23625**
-- XGB on whole set of features take 5 min and score **ndcg_5 = 0.87562** (correspondes to **top 25%** in private LB)
+- XGB on whole set of features take ~5min in 4 threads and score **ndcg_5 = 0.87562** (correspondes to **top 25%** in private LB)

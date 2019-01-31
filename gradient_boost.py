@@ -1,8 +1,9 @@
-import numpy as np
 import pandas as pd
 import datetime
 import xgboost
 from sklearn.preprocessing import LabelEncoder
+
+from submission_utils import saveResult
 
 NA_CONST = -1
 
@@ -17,7 +18,7 @@ y = le.fit_transform(labels)
 xgtrain = xgboost.DMatrix(data, label=y)
 
 clf = xgboost.XGBClassifier(max_depth=5,
-                            missing=-1,
+                            missing=NA_CONST,
                             n_estimators=35,
                             subsample=0.5,
                             colsample_bytree=0.3,
@@ -33,16 +34,6 @@ Xid = X_test.pop('id')
 
 y_pred = clf.predict_proba(X_test)
 
-#Taking the 5 classes with highest probabilities
-ids = []  #list of ids
-cts = []  #list of countries
-for i in range(len(Xid)):
-    idx = Xid[i]
-    ids += [idx] * 5
-    cts += le.inverse_transform(np.argsort(y_pred[i])[::-1])[:5].tolist()
-
-#Generate submission
-sub = pd.DataFrame(np.column_stack((ids, cts)), columns=['id', 'country'])
-sub.to_csv('predict/xgb.csv', index=False)
+saveResult(Xid, y_pred, le, 'predict/xgb.csv')
 
 print(str(datetime.datetime.now() - start))

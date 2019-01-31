@@ -11,10 +11,20 @@ from sklearn.preprocessing import LabelEncoder
 ACTION_COUNT_DROP_THRESHOLD = 100
 
 def normalizeData(data):
-    data['date_account_created'] = normalizeDateColumn(data['date_account_created'], '%Y-%m-%d')
+    DAC = pd.to_datetime(data.pop('date_account_created'), format='%Y-%m-%d')
+    data['DAC_year'] = DAC.dt.year
+    data['DAC_month'] = DAC.dt.month
+    data['DAC_day_of_month'] = DAC.dt.day
+    data['DAC_weekday'] = DAC.dt.weekday
+    data['DAC_season'] = DAC.dt.month.apply(lambda x: (x % 12 + 3) // 3)
 
-    first_active_min = min(data['timestamp_first_active'])
-    data['timestamp_first_active'] = data['timestamp_first_active'].map(lambda x: x - first_active_min)
+    TFA = pd.to_datetime(data.pop('timestamp_first_active'), format='%Y%m%d%H%M%S')
+    data['TFA_year'] = TFA.dt.year
+    data['TFA_month'] = TFA.dt.month
+    data['TFA_day_of_month'] = TFA.dt.day
+    data['TFA_weekday'] = TFA.dt.weekday
+    data['TFA_season'] = TFA.dt.month.apply(lambda x: (x % 12 + 3) // 3)
+    data['TFA_hour_in_day'] = TFA.dt.hour
 
     genderMapping = {
         'MALE': 1,
@@ -31,8 +41,9 @@ def normalizeData(data):
     }
     data['signup_method'] = data['signup_method'].map(signupMapping)
 
-    data['language'] = mapStrToOrdinals(data['language'])
-    data['language_copy'] = mapStrToOrdinals(data['language_copy'])
+    langLE = LabelEncoder()
+    data['language'] = langLE.fit_transform(data['language'])
+    data['language_copy'] = langLE.fit_transform(data['language_copy'])
 
     data['language'] = mapStrToOrdinals(data['language'])
     data['affiliate_channel'] = mapStrToOrdinals(data['affiliate_channel'])

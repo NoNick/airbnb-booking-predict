@@ -24,15 +24,6 @@ clf = xgboost.XGBClassifier(max_depth=6,
                             colsample_bytree=0.3,
                             objective='multi:softprob',
                             num_class=n_classes)
-#xgb_param = clf.get_xgb_params()
-#cvresult = xgboost.cv(xgb_param, xgtrain, nfold=10, metrics=['mlogloss'])  #TODO: try merror
-# xgb = XGBClassifier(
-#             max_depth=6,
-#         silent=True,
-#         n_jobs=4,
-#             nthread=4,
-#             subsample=.5,
-#             colsample_bytree=.3)
 clf.fit(data, y)
 
 X_test = pd.read_csv('data/test_users_norm.csv').fillna(NA_CONST)

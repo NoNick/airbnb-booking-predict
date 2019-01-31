@@ -16,14 +16,16 @@ le = LabelEncoder()
 y = le.fit_transform(labels)
 xgtrain = xgboost.DMatrix(data, label=y)
 
-clf = xgboost.XGBClassifier(max_depth=6,
-                            silent=False,
-                            n_jobs=4,
-                            nthread=4,
+clf = xgboost.XGBClassifier(max_depth=5,
+                            missing=-1,
+                            n_estimators=35,
                             subsample=0.5,
                             colsample_bytree=0.3,
                             objective='multi:softprob',
-                            num_class=n_classes)
+                            num_class=n_classes,
+                            silent=False,
+                            n_jobs=4,
+                            nthread=4)
 clf.fit(data, y)
 
 X_test = pd.read_csv('data/test_users_norm.csv').fillna(NA_CONST)

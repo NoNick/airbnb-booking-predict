@@ -143,9 +143,15 @@ def joinAgeGenderBucketFeatues(buckets, users):
 
 start = datetime.now()
 
-train = pd.read_csv("data/train_users_2.csv").drop('date_first_booking', axis=1)
-test = pd.read_csv("data/test_users.csv").drop('date_first_booking', axis=1)
+train = pd.read_csv("data/train_users_2.csv").drop('date_first_booking', axis=1).set_index('user_id')
+test = pd.read_csv("data/test_users.csv").drop('date_first_booking', axis=1).set_index('id')
 print("Loaded train and test sets")
+
+usedDevice = getMostUsedDeviceByUserId()
+elapsed = getSecsElapsedByUserId()
+train = train.join(usedDevice, how='left').join(elapsed, how='left')
+test = test.join(usedDevice, how='left').join(elapsed, how='left')
+print("Processed used devices and session length")
 
 ageGenderBuckets = getAgeGenderBuckets()
 train = joinAgeGenderBucketFeatues(ageGenderBuckets, train)
@@ -162,20 +168,11 @@ actions = dropLowCountColumns(actions, ACTION_COUNT_DROP_THRESHOLD)
 actions.set_index('user_id', inplace=True)
 print("Dropped %d actions due to rare use" % (tmp - len(actions.columns)))
 
-usedDevice = getMostUsedDeviceByUserId()
-elapsed = getSecsElapsedByUserId()
-print("Processed session data")
-
-
-def joinTables(src):
-    return src.join(actions, how='left').join(usedDevice, how='left').join(elapsed, how='left')
-
-
-train = joinTables(train.set_index('user_id'))
+train = train.join(actions, how='left')
 destinations = train.pop('country_destination')
 train['country_destination'] = destinations  # move column to the end
 train.to_csv("data/train_users_2_norm.csv")
-test = joinTables(test.set_index('id'))
+test = test.join(actions, how='left')
 test.to_csv("data/test_users_norm.csv")
 print("%d features in total" % (len(train.columns) - 2))
 

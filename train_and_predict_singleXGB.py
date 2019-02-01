@@ -6,6 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from submission_utils import saveResult
 
 NA_CONST = -1
+THREADS = 4
 
 n_classes = 12  # Same number of classes as in Airbnb competition.
 data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(NA_CONST)
@@ -25,8 +26,8 @@ clf = xgboost.XGBClassifier(max_depth=5,
                             objective='multi:softprob',
                             num_class=n_classes,
                             silent=False,
-                            n_jobs=4,
-                            nthread=4)
+                            n_jobs=THREADS,
+                            nthread=THREADS)
 clf.fit(data, y)
 
 X_test = pd.read_csv('data/test_users_norm.csv').fillna(NA_CONST)

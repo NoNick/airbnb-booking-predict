@@ -64,17 +64,17 @@ _clfs = {
         n_threads=THREADS)
 }
 # 'clfName': (startColumnName, endColumnName
-_clfPos = {'BaseFeatures': ('signup_method', 'secs_elapsed'),
-           'AgeGender': ('age', 'US_oppositeGender_population'),
-           'DAC': ('DAC_year', 'DAC_season'),
-           'TFA': ('TFA_year', 'TFA_hour_in_day'),
-           'Actions': ('personalize$wishlist_content_update', 'phone_verification_error$-unknown-')}
+clfPos = {'BaseFeatures': ('signup_method', 'secs_elapsed'),
+          'AgeGender': ('age', 'US_oppositeGender_population'),
+          'DAC': ('DAC_year', 'DAC_season'),
+          'TFA': ('TFA_year', 'TFA_hour_in_day'),
+          'Actions': ('personalize$wishlist_content_update', 'phone_verification_error$-unknown-')}
 
 
 def getClassifiersList(X):
     for name, clf in _clfs.items():
-        clf.beginColumn = X.columns.get_loc(_clfPos[name][0])
-        clf.endColumn = X.columns.get_loc(_clfPos[name][1])
+        clf.beginColumn = X.columns.get_loc(clfPos[name][0])
+        clf.endColumn = X.columns.get_loc(clfPos[name][1])
     return _clfs
 
 

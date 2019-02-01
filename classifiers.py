@@ -1,6 +1,4 @@
-import numpy as np
 from datetime import datetime
-from sklearn.metrics import log_loss
 from xgboost.sklearn import XGBClassifier
 
 random_state = 1
@@ -80,10 +78,9 @@ def getClassifiersList(X):
     return _clfs
 
 
-def getTrainTestValidPredictions(clfs, X, y, X_train, y_train, X_valid, X_test, y_test):
+def getTrainTestValidPredictions(clfs, X_train, y_train, X_valid):
     # predictions on the validation and test sets
     p_valid = []
-    p_test = []
 
     clfN = len(clfs)
     i = 0
@@ -95,26 +92,22 @@ def getTrainTestValidPredictions(clfs, X, y, X_train, y_train, X_valid, X_test, 
         clf.fit(X_train.iloc[:, startPos:endPos], y_train)
         yv = clf.predict_proba(X_valid.iloc[:, startPos:endPos])
         p_valid.append(yv)
-
-        # Second run. Training on (X, y) and predicting on X_test.
-        clf.fit(X.iloc[:, startPos:endPos], y)
-        yt = clf.predict_proba(X_test.iloc[:, startPos:endPos])
-        p_test.append(yt)
-
-        print('{:12s} {:2s} {:1.7f}'.format(name, 'logloss  =>', log_loss(y_test, yt)))
         i += 1
         print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) + " last one") % (i, clfN))
 
-    return p_valid, p_test
+    return p_valid
 
 
 def learn(clfs, X, y):
+    clfN = len(clfs)
+    i = 0
     for name, clf in clfs.items():
         start = datetime.now()
         startPos = clf.beginColumn
         endPos = clf.endColumn
         #     First run. Training on (X_train, y_train) and predicting on X_valid.
         clf.fit(X.iloc[:, startPos:endPos], y)
+        i += 1
         print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) + " last one") % (i, clfN))
     return clfs
 
@@ -130,4 +123,4 @@ def predict(clfs, X):
         p.append(yf)
         i += 1
         print("Got predictions from %3d/%d classifier" % (i, clfN))
-    return np.hstack(p)
+    return p

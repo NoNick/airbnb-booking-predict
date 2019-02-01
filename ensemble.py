@@ -3,7 +3,6 @@ import numpy as np
 from sklearn.metrics import log_loss
 from sklearn.base import BaseEstimator
 from scipy.optimize import minimize
-from datetime import datetime
 
 
 def objf_ens_optB(w, Xs, y, n_class=12):

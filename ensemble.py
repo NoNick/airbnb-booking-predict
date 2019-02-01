@@ -5,96 +5,6 @@ from sklearn.base import BaseEstimator
 from scipy.optimize import minimize
 from datetime import datetime
 
-def objf_ens_optA(w, Xs, y, n_class=12):
-    """
-    Function to be minimized in the EN_optA ensembler.
-
-    Parameters:
-    ----------
-    w: array-like, shape=(n_preds)
-       Candidate solution to the optimization problem (vector of weights).
-    Xs: list of predictions to combine
-       Each prediction is the solution of an individual classifier and has a
-       shape=(n_samples, n_classes).
-    y: array-like sahpe=(n_samples,)
-       Class labels
-    n_class: int
-       Number of classes in the problem (12 in Airbnb competition)
-
-    Return:
-    ------
-    score: Score of the candidate solution.
-    """
-    w = np.abs(w)
-    sol = np.zeros(Xs[0].shape)
-    for i in range(len(w)):
-        sol += Xs[i] * w[i]
-    # Using log-loss as objective function (different objective functions can be used here).
-    score = log_loss(y, sol)
-    return score
-
-
-class EN_optA(BaseEstimator):
-    """
-    Given a set of predictions $X_1, X_2, ..., X_n$,  it computes the optimal set of weights
-    $w_1, w_2, ..., w_n$; such that minimizes $log\_loss(y_T, y_E)$,
-    where $y_E = X_1*w_1 + X_2*w_2 +...+ X_n*w_n$ and $y_T$ is the true solution.
-    """
-    classes_ = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-
-    def __init__(self, n_class=12):
-        super(EN_optA, self).__init__()
-        self.n_class = n_class
-
-    def fit(self, X, y):
-        """
-        Learn the optimal weights by solving an optimization problem.
-
-        Parameters:
-        ----------
-        Xs: list of predictions to be ensembled
-           Each prediction is the solution of an individual classifier and has
-           shape=(n_samples, n_classes).
-        y: array-like
-           Class labels
-        """
-        Xs = np.hsplit(X, X.shape[1] / self.n_class)
-        # Initial solution has equal weight for all individual predictions.
-        x0 = np.ones(len(Xs)) / float(len(Xs))
-        # Weights must be bounded in [0, 1]
-        bounds = [(0,1)]*len(x0)
-        #All weights must sum to 1
-        cons = ({'type':'eq','fun':lambda w: 1-sum(w)})
-        #Calling the solver
-        res = minimize(objf_ens_optA, x0, args=(Xs, y, self.n_class),
-                       method='SLSQP',
-                       bounds=bounds,
-                       constraints=cons
-                       )
-        self.w = res.x
-        return self
-
-    def predict_proba(self, X):
-        """
-        Use the weights learned in training to predict class probabilities.
-
-        Parameters:
-        ----------
-        Xs: list of predictions to be blended.
-            Each prediction is the solution of an individual classifier and has
-            shape=(n_samples, n_classes).
-
-        Return:
-        ------
-        y_pred: array_like, shape=(n_samples, n_class)
-                The blended prediction.
-        """
-        Xs = np.hsplit(X, X.shape[1] / self.n_class)
-        y_pred = np.zeros(Xs[0].shape)
-        for i in range(len(self.w)):
-            y_pred += Xs[i] * self.w[i]
-        return y_pred
-
 
 def objf_ens_optB(w, Xs, y, n_class=12):
     """
@@ -122,7 +32,9 @@ def objf_ens_optB(w, Xs, y, n_class=12):
     # (e.g. more solvers are allowed).
     w_range = np.arange(len(w)) % n_class
     for i in range(n_class):
-        w[w_range == i] = w[w_range == i] / np.sum(w[w_range == i])
+        wi_sum = np.sum(w[w_range == i])
+        if wi_sum != 0:
+            w[w_range == i] = w[w_range == i] / wi_sum
 
     sol = np.zeros(Xs[0].shape)
     for i in range(len(w)):
@@ -163,13 +75,13 @@ class EN_optB(BaseEstimator):
         #Initial solution has equal weight for all individual predictions.
         x0 = np.ones(self.n_class * len(Xs)) / float(len(Xs))
         #Weights must be bounded in [0, 1]
-        bounds = [(0,1)]*len(x0)
+        bounds = [(0, 1)] * len(x0)
         #Calling the solver (constraints are directly defined in the objective
         #function)
         res = minimize(objf_ens_optB, x0, args=(Xs, y, self.n_class),
-                       method='L-BFGS-B',
-                       bounds=bounds,
-                       )
+                       # method='L-BFGS-B',
+                       method='SLSQP',
+                       bounds=bounds)
         self.w = res.x
         return self
 
@@ -194,39 +106,3 @@ class EN_optB(BaseEstimator):
             y_pred[:, i % self.n_class] += \
                 Xs[int(i / self.n_class)][:, i % self.n_class] * self.w[i]
         return y_pred
-
-
-def normalize1(w, n_class=12):
-    w_range = np.arange(len(w)) % n_class
-    for i in range(n_class):
-        w[w_range == i] = w[w_range == i] / np.sum(w[w_range == i])
-
-
-def normalize2(w, n_class=12):
-    wLen = len(w)
-    sum = np.zeros(n_class)
-    i = 0
-    while i < wLen:
-        sum += w[i:(i + n_class)]
-        i += n_class
-    i = 0
-    while i < wLen:
-        w[i:(i + n_class)] /= sum
-        i += n_class
-
-
-def compare_normalize():
-    w1 = np.linspace(0, 100, 120000)
-    start = datetime.now()
-    for i in range(100):
-        normalize1(w1)
-    print(str(datetime.now() - start))
-
-    w2 = np.linspace(0, 100, 120000)
-    start = datetime.now()
-    for i in range(100):
-        normalize2(w2)
-    print(str(datetime.now() - start))
-
-    print(str(all(w1 == w2)))
-    print(str(sum(abs((w1 - w2)))))

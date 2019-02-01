@@ -1,78 +1,132 @@
 import numpy as np
 from datetime import datetime
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
 from xgboost.sklearn import XGBClassifier
-import xgboost as xgb
 
 random_state = 1
 
+THREADS = 4
 
-def getPos(i):
-    if i < 3:
-        return i, i + 1
-    return 4, 10
+# 'clfName': classifierObj
+_clfs = {
+    'BaseFeatures': XGBClassifier(
+        max_depth=5,
+        learning_rate=0.01,
+        n_estimators=50,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=-1,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'AgeGender': XGBClassifier(
+        max_depth=4,
+        learning_rate=0.01,
+        n_estimators=35,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=-1,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'DAC': XGBClassifier(
+        max_depth=2,
+        learning_rate=0.01,
+        n_estimators=25,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=-1,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'TFA': XGBClassifier(
+        max_depth=2,
+        learning_rate=0.01,
+        n_estimators=25,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=-1,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'Actions': XGBClassifier(
+        max_depth=6,
+        learning_rate=0.01,
+        n_estimators=35,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=0,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS)
+}
+# 'clfName': (startColumnName, endColumnName
+_clfPos = {'BaseFeatures': ('signup_method', 'secs_elapsed'),
+           'AgeGender': ('age', 'US_oppositeGender_population'),
+           'DAC': ('DAC_year', 'DAC_season'),
+           'TFA': ('TFA_year', 'TFA_hour_in_day'),
+           'Actions': ('personalize$wishlist_content_update', 'phone_verification_error$-unknown-')}
 
 
-def genClassifiersList(N):
-    result = []
-    for _ in range(0, N):
-        # result.append(LogisticRegression(
-        #     random_state=random_state,
-        #     solver='lbfgs',
-        #     max_iter=1000,
-        #     n_jobs=4,
-        #     multi_class='multinomial'))
-        result.append(XGBClassifier(
-            max_depth=6,
-            silent=True,
-            n_jobs=4,
-            nthread=4,
-            subsample=.5,
-            colsample_bytree=.3))
-    return result
+def getClassifiersList(X):
+    for name, clf in _clfs.items():
+        clf.beginColumn = X.columns.get_loc(_clfPos[name][0])
+        clf.endColumn = X.columns.get_loc(_clfPos[name][1])
+    return _clfs
 
 
-def learnEachTwoOnSingleFeature(clfs, X, y, X_train, y_train, X_valid, X_test, y_test):
+def getTrainTestValidPredictions(clfs, X, y, X_train, y_train, X_valid, X_test, y_test):
     # predictions on the validation and test sets
     p_valid = []
     p_test = []
 
     clfN = len(clfs)
     i = 0
-    start = datetime.now()
-    timeDiffs = (start - start)
-    for clf in clfs:
-        # pos = int(i / 2)  # feature position
-        startP, end = getPos(i)
+    for name, clf in clfs.items():
+        start = datetime.now()
+        startPos = clf.beginColumn
+        endPos = clf.endColumn
         #     First run. Training on (X_train, y_train) and predicting on X_valid.
-        clf.fit(X_train.iloc[:, startP:end], y_train)
-        yv = clf.predict_proba(X_valid.iloc[:, startP:end])
-        if i == 13:
-            x = 1
+        clf.fit(X_train.iloc[:, startPos:endPos], y_train)
+        yv = clf.predict_proba(X_valid.iloc[:, startPos:endPos])
         p_valid.append(yv)
 
         # Second run. Training on (X, y) and predicting on X_test.
-        clf.fit(X.iloc[:, startP:end], y)
-        yt = clf.predict_proba(X_test.iloc[:, startP:end])
+        clf.fit(X.iloc[:, startPos:endPos], y)
+        yt = clf.predict_proba(X_test.iloc[:, startPos:endPos])
         p_test.append(yt)
 
-        print('{:10s} {:2s} {:1.7f}'.format('%dth: ' % i, 'logloss  =>', log_loss(y_test, yt)))
+        print('{:12s} {:2s} {:1.7f}'.format(name, 'logloss  =>', log_loss(y_test, yt)))
         i += 1
-        timeDiffs += datetime.now() - start
-        print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) +
-               " last one, " + str((clfN - i) * timeDiffs / i) + " ETA") % (i, clfN))
+        print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) + " last one") % (i, clfN))
 
     return p_valid, p_test
 
-def predictEachTwoOnSingleFeature(clfs, X):
+
+def learn(clfs, X, y):
+    for name, clf in clfs.items():
+        start = datetime.now()
+        startPos = clf.beginColumn
+        endPos = clf.endColumn
+        #     First run. Training on (X_train, y_train) and predicting on X_valid.
+        clf.fit(X.iloc[:, startPos:endPos], y)
+        print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) + " last one") % (i, clfN))
+    return clfs
+
+
+def predict(clfs, X):
     clfN = len(clfs)
     p = []
     i = 0
-    for clf in clfs:
-        # pos = int(i / 2)  # feature position
-        start, end = getPos(i)
-        yf = clf.predict_proba(X.iloc[:, start:end])
+    for name, clf in clfs.items():
+        startPos = clf.beginColumn
+        endPos = clf.endColumn
+        yf = clf.predict_proba(X.iloc[:, startPos:endPos])
         p.append(yf)
         i += 1
         print("Got predictions from %3d/%d classifier" % (i, clfN))

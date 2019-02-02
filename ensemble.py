@@ -1,11 +1,13 @@
 # Copy-paste from https://www.kaggle.com/svpons/three-level-classification-architecture
 import numpy as np
-from sklearn.metrics import log_loss
 from sklearn.base import BaseEstimator
-from scipy.optimize import minimize
+from scipy.optimize import minimize, Bounds
+from sklearn.preprocessing import LabelBinarizer
+
+eps=1e-15
 
 
-def objf_ens_optB(w, Xs, y, n_class=12):
+def objf_ens_optB_with_Gradient(w, Xs, y, n_class=12):
     """
     Function to be minimized in the EN_optB ensembler.
 
@@ -25,23 +27,32 @@ def objf_ens_optB(w, Xs, y, n_class=12):
     ------
     score: Score of the candidate solution.
     """
+    wLen = len(w)
+
     # Constraining the weights for each class to sum up to 1.
     # This constraint can be defined in the scipy.minimize function, but doing
     # it here gives more flexibility to the scipy.minimize function
     # (e.g. more solvers are allowed).
-    w_range = np.arange(len(w)) % n_class
+    w_range = np.arange(wLen) % n_class
     for i in range(n_class):
         wi_sum = np.sum(w[w_range == i])
         if wi_sum != 0:
             w[w_range == i] = w[w_range == i] / wi_sum
 
     sol = np.zeros(Xs[0].shape)
-    for i in range(len(w)):
+    for i in range(wLen):
         sol[:, i % n_class] += Xs[int(i / n_class)][:, i % n_class] * w[i]
 
-    # Using log-loss as objective function (different objective functions can be used here).
-    score = log_loss(y, sol)
-    return score
+    lb = LabelBinarizer().fit(y)
+    y_t = lb.transform(y)
+    sol = np.clip(sol, eps, 1 - eps)
+    loss = np.average(-(y_t * np.log(sol)).sum(axis=1))
+
+    grad = np.zeros(wLen)
+    for i in range(wLen):
+        grad[i] = -np.average((y_t[:, i % n_class] * Xs[int(i / n_class)][:, i % n_class]) / sol[:, i % n_class])
+
+    return loss, grad
 
 
 class EN_optB(BaseEstimator):
@@ -71,16 +82,20 @@ class EN_optB(BaseEstimator):
            Class labels
         """
         Xs = np.hsplit(X, X.shape[1]/self.n_class)
-        #Initial solution has equal weight for all individual predictions.
-        x0 = np.ones(self.n_class * len(Xs)) / float(len(Xs))
-        #Weights must be bounded in [0, 1]
-        bounds = [(0, 1)] * len(x0)
+        # x0 = np.ones(self.n_class * len(Xs)) / float(len(Xs))
+        x0 = ([0.3] * 12) + ([0.2] * 12) + ([0.1] * 12) + ([0.1] * 12) + ([0.3] * 12)
         #Calling the solver (constraints are directly defined in the objective
         #function)
-        res = minimize(objf_ens_optB, x0, args=(Xs, y, self.n_class),
-                       # method='L-BFGS-B',
-                       method='SLSQP',
-                       bounds=bounds)
+        res = minimize(objf_ens_optB_with_Gradient, x0, args=(Xs, y, self.n_class),
+                       jac=True,
+                       # method='BFGS-B',
+                       method='TNC',
+                       # method='SLSQP',
+                       bounds=Bounds(0, 1),
+                       options={
+                           'disp': True,
+                           'eps': eps,
+                       })
         self.w = res.x
         return self
 
@@ -105,3 +120,13 @@ class EN_optB(BaseEstimator):
             y_pred[:, i % self.n_class] += \
                 Xs[int(i / self.n_class)][:, i % self.n_class] * self.w[i]
         return y_pred
+
+
+# |-------------------------------------------------------------------------------------------------|
+# |              |   y0 |   y1 |   y2 |   y3 |   y4 |   y5 |   y6 |   y7 |   y8 |   y9 |   y10 |   y11 |
+# |--------------+------+------+------+------+------+------+------+------+------+------+-------+-------|
+# | BaseFeatures | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.22 | 0.2  |  0.2 |  0.21 |  0.2  |
+# | AgeGender    | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.2  | 0.21 | 0.2  |  0.2 |  0.21 |  0.2  |
+# | DAC          | 0.2  | 0.19 | 0.19 | 0.19 | 0.19 | 0.19 | 0.19 | 0.23 | 0.2  |  0.2 |  0.22 |  0.19 |
+# | TFA          | 0.2  | 0.19 | 0.19 | 0.19 | 0.19 | 0.19 | 0.19 | 0.23 | 0.2  |  0.2 |  0.22 |  0.19 |
+# | Actions      | 0.21 | 0.22 | 0.22 | 0.22 | 0.22 | 0.22 | 0.22 | 0.12 | 0.21 |  0.2 |  0.13 |  0.22 |

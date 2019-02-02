@@ -20,7 +20,7 @@ le = LabelEncoder()
 labelsEncoded = le.fit_transform(labels)
 
 # Splitting train data into training and validation sets.
-X_train, X_valid, y_train, y_valid = train_test_split(data, labelsEncoded, test_size=0.25, random_state=random_state)
+X_train, X_valid, y_train, y_valid = train_test_split(data, labelsEncoded, test_size=0.4, random_state=random_state)
 
 print('Data shape:')
 print('X_train: %s, X_valid: %s \n' % (X_train.shape, X_valid.shape))

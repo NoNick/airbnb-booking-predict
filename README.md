@@ -2,7 +2,7 @@
 
 ## Steps to run
 - Unpack *data/train_users_2_norm.csv.zip* and *data/test_users_norm.csv.zip*
-- Run **train_and_predict_ensemble.py** to generate *predict/ensemble* submission data  
+- Run **train_and_predict_ensemble.py** to generate *predict/ensemble.csv* submission data  
 **OR**  
 - Run **train_and_predict_singleXGB.py** (<10 min at 4 threads) to generate *predict/xgb.csv* submission data
 

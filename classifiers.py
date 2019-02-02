@@ -109,9 +109,11 @@ def getTrainTestValidPredictions(clfs, X_train, y_train, X_valid):
         #     First run. Training on (X_train, y_train) and predicting on X_valid.
         X_train_filtered, y_train_filtered = filterAllColumnsMatch(X_train.iloc[:, startPos:endPos], y_train)
         clf.fit(X_train_filtered, y_train_filtered)
-        yv = clf.predict_proba(X_valid.iloc[:, startPos:endPos])
+
+        X_valid_featured = X_valid.iloc[:, startPos:endPos]
+        yv = clf.predict_proba(X_valid_featured)
         # some users have no actions data at all, return their action classifier's probabilities as 0
-        yv[X_valid.eq(NA_CONST).all(axis=1), :] = 0
+        yv[X_valid_featured.eq(NA_CONST).all(axis=1), :] = 0
         p_valid.append(yv)
         i += 1
         print(("Trained %3d/%d classifiers, " + str(datetime.now() - start) + " last one") % (i, clfN))

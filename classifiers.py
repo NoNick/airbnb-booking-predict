@@ -3,6 +3,7 @@ from xgboost.sklearn import XGBClassifier
 
 random_state = 1
 
+NA_CONST = -1
 THREADS = 4
 
 # 'clfName': classifierObj
@@ -10,10 +11,12 @@ _clfs = {
     'BaseFeatures': XGBClassifier(
         max_depth=6,
         learning_rate=0.02,
-        n_estimators=225,
+        n_estimators=300,
+        # learning_rate=0.1,
+        # n_estimators=60,
         subsample=0.5,
         colsample_bytree=0.15,
-        missing=-1,
+        missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
@@ -21,10 +24,12 @@ _clfs = {
     'AgeGender': XGBClassifier(
         max_depth=7,
         learning_rate=0.02,
-        n_estimators=250,
+        n_estimators=350,
+        # learning_rate=0.1,
+        # n_estimators=70,
         subsample=0.5,
         colsample_bytree=0.4,
-        missing=-1,
+        missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
@@ -33,9 +38,11 @@ _clfs = {
         max_depth=1,
         learning_rate=0.03,
         n_estimators=150,
+        # learning_rate=0.1,
+        # n_estimators=45,
         subsample=0.5,
         colsample_bytree=0.1,
-        missing=-1,
+        missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
@@ -44,9 +51,11 @@ _clfs = {
         max_depth=1,
         learning_rate=0.03,
         n_estimators=150,
+        # learning_rate=0.1,
+        # n_estimators=45,
         subsample=0.5,
         colsample_bytree=0.1,
-        missing=-1,
+        missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
@@ -55,20 +64,23 @@ _clfs = {
         max_depth=6,
         learning_rate=0.02,
         n_estimators=200,
+        # max_depth=4,
+        # learning_rate=0.1,
+        # n_estimators=50,
         subsample=0.5,
         colsample_bytree=0.3,
-        missing=0,
+        missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS)
 }
 # 'clfName': (startColumnName, endColumnName
-clfPos = {'BaseFeatures': ('signup_method', 'secs_elapsed'),
-          'AgeGender': ('age', 'US_oppositeGender_population'),
+clfPos = {'BaseFeatures': ('gender', 'device_type'),
+          'AgeGender': ('age_copy', 'US_oppositeGender_population'),
           'DAC': ('DAC_year', 'DAC_season'),
           'TFA': ('TFA_year', 'TFA_hour_in_day'),
-          'Actions': ('personalize$wishlist_content_update', 'phone_verification_error$-unknown-')}
+          'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-')}
 
 
 def getClassifiersList(X):

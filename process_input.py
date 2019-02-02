@@ -8,7 +8,7 @@ from pandas._libs.index import datetime
 # if an action was used less than this number across all sessions, drop it from features
 from sklearn.preprocessing import LabelEncoder
 
-ACTION_COUNT_DROP_THRESHOLD = 100
+ACTION_COUNT_DROP_THRESHOLD = 50
 
 def normalizeData(data):
     DAC = pd.to_datetime(data.pop('date_account_created'), format='%Y-%m-%d')
@@ -33,46 +33,29 @@ def normalizeData(data):
         '-unknown-': np.nan
     }
     data['gender'] = data['gender'].map(genderMapping)
-
-    signupMapping = {
-        'basic': 1,
-        'facebook': 2,
-        'google': 3
-    }
-    data['signup_method'] = data['signup_method'].map(signupMapping)
+    data['gender_copy'] = data['gender_copy'].map(genderMapping)
 
     langLE = LabelEncoder()
     data['language'] = langLE.fit_transform(data['language'])
     data['language_copy'] = langLE.fit_transform(data['language_copy'])
 
-    data['language'] = mapStrToOrdinals(data['language'])
-    data['affiliate_channel'] = mapStrToOrdinals(data['affiliate_channel'])
-    data['affiliate_provider'] = mapStrToOrdinals(data['affiliate_provider'])
-    data['first_affiliate_tracked'] = mapStrToOrdinals(data['first_affiliate_tracked'])
-    data['signup_app'] = mapStrToOrdinals(data['signup_app'])
-    data['first_device_type'] = mapStrToOrdinals(data['first_device_type'])
-    # data.drop('first_device_type', axis=1, inplace=True)
-    data['first_browser'] = mapStrToOrdinals(data['first_browser'])
+    data.loc[data['first_browser'] == '-unknown-', 'first_browser'] = np.nan
+    data.loc[data['first_affiliate_tracked'] == 'untracked', 'first_affiliate_tracked'] = np.nan
+    data.loc[data['first_device_type'] == 'Other/Unknown', 'first_device_type'] = np.nan
+    for columnName in ['signup_method', 'affiliate_channel', 'affiliate_provider', 'first_affiliate_tracked',
+                       'signup_app', 'first_browser', 'first_device_type']:
+        mapStrToOrdinals(data, columnName)
 
     data.loc[(14 > data.age) & (data.age > 100), 'age'] = np.nan
 
     return data
 
 
-def mapStrToOrdinals(column):
-    uniques = np.unique(column.fillna('abracadabra')).tolist()
-    uniquesWithIndices = {k: v + 1 for v, k in enumerate(uniques)}  # TODO: sort by frequency?
-    return column.map(uniquesWithIndices)
-
-
-def normalizeDateColumn(column, dateFormat):
-    column = pd.to_datetime(column, format=dateFormat)
-    column = column.map(datetime.toordinal)
-    # pandas maps nan to 1
-    column.replace(1, math.nan, inplace=True)
-    min_value = np.nanmin(column)
-    column = column.map(lambda x: x - min_value)
-    return column
+def mapStrToOrdinals(data, columnName):
+    nanIndices = data[columnName].isnull()
+    data[columnName].fillna('NA', inplace=True)
+    data[columnName] = LabelEncoder().fit(data[columnName]).transform(data[columnName])
+    data.loc[nanIndices, columnName] = np.nan
 
 
 def dropLowCountColumns(table, minCount):
@@ -108,10 +91,10 @@ def getAgeGenderBuckets():
 
 def joinAgeGenderBucketFeatues(buckets, users):
     # move relevant features alongside new features
-    ages = users.pop('age')
-    genders = users.pop('gender')
-    users['age'] = ages
-    users['gender'] = genders
+    ages = users['age']
+    genders = users['gender']
+    users['age_copy'] = ages
+    users['gender_copy'] = genders
     users['language_copy'] = users['language']
 
     BUCKET_SIZE = 5  # years
@@ -149,9 +132,9 @@ print("Loaded train and test sets")
 
 usedDevice = getMostUsedDeviceByUserId()
 elapsed = getSecsElapsedByUserId()
-train = train.join(usedDevice, how='left').join(elapsed, how='left')
-test = test.join(usedDevice, how='left').join(elapsed, how='left')
-print("Processed used devices and session length")
+train = train.join(usedDevice, how='left')#.join(elapsed, how='left')
+test = test.join(usedDevice, how='left')#.join(elapsed, how='left')
+print("Processed used devices")
 
 ageGenderBuckets = getAgeGenderBuckets()
 train = joinAgeGenderBucketFeatues(ageGenderBuckets, train)
@@ -165,6 +148,7 @@ print("Normalized numbers and labels")
 actions = pd.read_csv("data/user_actions_count.csv")
 tmp = len(actions.columns)
 actions = dropLowCountColumns(actions, ACTION_COUNT_DROP_THRESHOLD)
+actions.replace(0, np.nan, inplace=True)
 actions.set_index('user_id', inplace=True)
 print("Dropped %d actions due to rare use" % (tmp - len(actions.columns)))
 

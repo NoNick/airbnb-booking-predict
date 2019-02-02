@@ -5,7 +5,7 @@ import xgboost
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 
-from classifiers import clfPos
+from classifiers import clfPos, filterAllColumnsMatch
 
 NA_CONST = -1
 THREADS = 4
@@ -23,36 +23,36 @@ y = le.fit_transform(labels)
 xgb_param = {
     'BaseFeatures': {
         'max_depth': [6],
-        'learning_rate': [0.02],
+        'learning_rate': [0.1],
         'silent': [True],
-        'n_jobs': [1],
-        'n_thread': [1],
+        'n_jobs': [THREADS],
+        'n_thread': [THREADS],
         'subsample': [0.5],
         'colsample_bytree': [0.15],
         'objective': ['multi:softprob'],
         'num_class': [n_classes],
-        'n_estimators': [225, 300],
+        'n_estimators': [60, 80],
         'missing': [NA_CONST]
     },
     'AgeGender': {
         'max_depth': [7],  # went up
-        'learning_rate': [0.02],
+        'learning_rate': [0.1],
         'silent': [True],
-        'n_jobs': [1],
-        'n_thread': [1],
+        'n_jobs': [THREADS],
+        'n_thread': [THREADS],
         'subsample': [0.5],
         'colsample_bytree': [0.4],  # went up
         'objective': ['multi:softprob'],
         'num_class': [n_classes],
-        'n_estimators': [250, 350],  # went up
+        'n_estimators': [70, 90],  # went up
         'missing': [NA_CONST]
     },
     # 'DAC': {
     #     'max_depth': [1],
     #     'learning_rate': [0.03],
     #     'silent': [True],
-    #     'n_jobs': [1],
-    #     'n_thread': [1],
+    #     'n_jobs': [THREADS],
+    #     'n_thread': [THREADS],
     #     'subsample': [0.5],
     #     'colsample_bytree': [0.1],  # went down
     #     'objective': ['multi:softprob'],
@@ -64,8 +64,8 @@ xgb_param = {
     #     'max_depth': [1],
     #     'learning_rate': [0.03],
     #     'silent': [True],
-    #     'n_jobs': [1],
-    #     'n_thread': [1],
+    #     'n_jobs': [THREADS],
+    #     'n_thread': [THREADS],
     #     'subsample': [0.5],
     #     'colsample_bytree': [0.1],  # went down
     #     'objective': ['multi:softprob'],
@@ -75,26 +75,27 @@ xgb_param = {
     # },
     'Actions': {
         'max_depth': [5, 6],
-        'learning_rate': [0.02],
+        'learning_rate': [0.1],
         'silent': [True],
-        'n_jobs': [1],
-        'n_thread': [1],
+        'n_jobs': [THREADS],
+        'n_thread': [THREADS],
         'subsample': [0.5],
-        'colsample_bytree': [0.15, 0.3],
+        'colsample_bytree': [0.3],
         'objective': ['multi:softprob'],
         'num_class': [n_classes],
-        'n_estimators': [150, 200, 250],
-        'missing': [0]
+        'n_estimators': [50, 100],
+        'missing': [NA_CONST]
     },
 }
 
 for name, params in xgb_param.items():
-    clf = GridSearchCV(xgboost.XGBClassifier(), params, n_jobs=THREADS, cv=FOLDS, iid=False,
+    clf = GridSearchCV(xgboost.XGBClassifier(), params, n_jobs=1, cv=FOLDS, iid=False,
                    scoring='neg_log_loss',
                    verbose=2, refit=True, error_score=np.nan)
     beginColumn = data.columns.get_loc(clfPos[name][0])
     endColumn = data.columns.get_loc(clfPos[name][1])
-    clf.fit(data.iloc[:, beginColumn:endColumn], y)
+    X_filtered, y_filtered = filterAllColumnsMatch(data.iloc[:, beginColumn:endColumn], y)
+    clf.fit(X_filtered, y_filtered)
 
     print('=' * len(str(clf.best_params_)))
     print('\033[39mBest params for %s:' % name)

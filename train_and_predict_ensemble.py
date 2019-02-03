@@ -7,10 +7,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 from ensemble import EN_optB
-from classifiers import getClassifiersList, getTrainTestValidPredictions, learn, predict, random_state
+from classifiers import getClassifiersList, getTrainTestValidPredictions, learn, predict, NA_CONST
 from submission_utils import saveResult
 
-NA_CONST = -1
 FOLDS = 5
 
 n_classes = 12  # Same number of classes as in Airbnb competition.
@@ -20,7 +19,7 @@ le = LabelEncoder()
 labelsEncoded = le.fit_transform(labels)
 
 # Splitting train data into training and validation sets.
-X_train, X_valid, y_train, y_valid = train_test_split(data, labelsEncoded, test_size=0.4, random_state=random_state)
+X_train, X_valid, y_train, y_valid = train_test_split(data, labelsEncoded, test_size=0.3, shuffle=True)
 
 print('Data shape:')
 print('X_train: %s, X_valid: %s \n' % (X_train.shape, X_valid.shape))
@@ -45,12 +44,6 @@ enB.fit(XV, y_valid)
 print("Fitted ensemble in " + str(datetime.datetime.now() - start))
 print('')
 
-from tabulate import tabulate
-print('                                    Weights of uncalibrated ensemble:')
-print('|-------------------------------------------------------------------------------------------------|')
-wB = np.round(enB.w.reshape((-1, n_classes)), decimals=2)
-wB = np.hstack((np.array(list(clfs.keys()), dtype=str).reshape(-1, 1), wB))
-print(tabulate(wB, headers=['y%s' % i for i in range(n_classes)], tablefmt="orgtbl"))
 
 #Calibrated version of EN_optB
 print("Calibrating ensemble with %d folds" % FOLDS)
@@ -62,12 +55,13 @@ print('')
 
 print('Predicting test set')
 print('--------------------------------------------------------------')
-print("Learn classifiers on whole train set")
-learn(clfs, data, labels)
+# print("Learn classifiers on whole train set")
+# learn(clfs, data, labels)
 
 start = datetime.datetime.now()
 test = pd.read_csv('data/test_users_norm.csv').fillna(NA_CONST)
 Xid = test.pop('id')
 XT = np.hstack(predict(clfs, test))
 saveResult(Xid, cc_optB.predict_proba(XT), le, 'predict/ensemble.csv')
-print("Ensemble submission is weighted in " + str(datetime.datetime.now() - start))
+# saveResult(Xid, enB.predict_proba(XT), le, 'predict/ensemble.csv')
+print("Ensemble submission is predicted and weighted in " + str(datetime.datetime.now() - start))

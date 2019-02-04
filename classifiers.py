@@ -1,5 +1,8 @@
+import numpy as np
+
 from datetime import datetime
 from xgboost.sklearn import XGBClassifier
+from sklearn.metrics import make_scorer
 
 random_state = 1
 
@@ -9,12 +12,10 @@ THREADS = 4
 # 'clfName': classifierObj
 _clfs = {
     'BaseFeatures': XGBClassifier(
-        max_depth=6,
-        learning_rate=0.02,
-        n_estimators=300,
-        # learning_rate=0.1,
-        # n_estimators=60,
-        subsample=0.5,
+        max_depth=5,
+        learning_rate=0.1,
+        n_estimators=100,
+        subsample=0.3,
         colsample_bytree=0.15,
         missing=NA_CONST,
         objective='multi:softprob',
@@ -22,65 +23,64 @@ _clfs = {
         n_jobs=THREADS,
         n_threads=THREADS),
     'AgeGender': XGBClassifier(
-        max_depth=7,
-        learning_rate=0.02,
-        n_estimators=350,
+        max_depth=5,
+        learning_rate=0.1,
+        n_estimators=75,
         # learning_rate=0.1,
         # n_estimators=70,
-        subsample=0.5,
-        colsample_bytree=0.4,
+        subsample=0.3,
+        colsample_bytree=0.3,
         missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
-    'DAC': XGBClassifier(
-        max_depth=1,
-        learning_rate=0.03,
-        n_estimators=150,
+    'DAC_TFA': XGBClassifier(
+        max_depth=3,
+        learning_rate=0.05,
+        n_estimators=50,
         # learning_rate=0.1,
         # n_estimators=45,
-        subsample=0.5,
-        colsample_bytree=0.1,
-        missing=NA_CONST,
-        objective='multi:softprob',
-        num_class=12,
-        n_jobs=THREADS,
-        n_threads=THREADS),
-    'TFA': XGBClassifier(
-        max_depth=1,
-        learning_rate=0.03,
-        n_estimators=150,
-        # learning_rate=0.1,
-        # n_estimators=45,
-        subsample=0.5,
-        colsample_bytree=0.1,
-        missing=NA_CONST,
-        objective='multi:softprob',
-        num_class=12,
-        n_jobs=THREADS,
-        n_threads=THREADS),
-    'Actions': XGBClassifier(
-        max_depth=6,
-        learning_rate=0.02,
-        n_estimators=300,
-        # max_depth=4,
-        # learning_rate=0.1,
-        # n_estimators=50,
         subsample=0.5,
         colsample_bytree=0.3,
         missing=NA_CONST,
         objective='multi:softprob',
         num_class=12,
         n_jobs=THREADS,
-        n_threads=THREADS)
+        n_threads=THREADS),
+    'Actions': XGBClassifier(
+        max_depth=3,
+        learning_rate=0.1,
+        n_estimators=50,
+        # max_depth=4,
+        # learning_rate=0.1,
+        # n_estimators=50,
+        subsample=0.5,
+        colsample_bytree=0.2,
+        missing=NA_CONST,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'AllFeatures': XGBClassifier(
+        max_depth=6,
+        learning_rate=0.01,
+        n_estimators=50,
+        subsample=0.7,
+        colsample_bytree=0.3,
+        missing=NA_CONST,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS
+    )
 }
 # 'clfName': (startColumnName, endColumnName
 clfPos = {'BaseFeatures': ('gender', 'device_type'),
           'AgeGender': ('age_copy', 'US_oppositeGender_population'),
-          'DAC': ('DAC_year', 'DAC_season'),
-          'TFA': ('TFA_year', 'TFA_hour_in_day'),
-          'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-')}
+          'DAC_TFA': ('DAC_year', 'TFA_hour_in_day'),
+          'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
+          'AllFeatures': ('gender', 'print_confirmation$-unknown-')}
 
 
 def getClassifiersList(X):
@@ -135,3 +135,15 @@ def predict(clfs, X):
         i += 1
         print("Got predictions from %3d/%d classifier" % (i, clfN))
     return p
+
+
+dcg5_at_k = [1.0, 0.63092975, 0.5, 0.43067656, 0.38685281, 0, 0, 0, 0, 0, 0, 0]
+
+
+def nDCG5(y, y_pred):
+    relevance = np.argsort(y_pred, axis=1)
+    relevanceOfTrueDestination = relevance[np.arange(len(y)), y]
+    return np.take(dcg5_at_k, relevanceOfTrueDestination).mean()
+
+
+nDCG5_score = make_scorer(nDCG5, greater_is_better=True, needs_proba=True)

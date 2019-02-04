@@ -35,7 +35,20 @@ _clfs = {
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
-    'DAC_TFA': XGBClassifier(
+    'DAC': XGBClassifier(
+        max_depth=3,
+        learning_rate=0.05,
+        n_estimators=50,
+        # learning_rate=0.1,
+        # n_estimators=45,
+        subsample=0.5,
+        colsample_bytree=0.3,
+        missing=NA_CONST,
+        objective='multi:softprob',
+        num_class=12,
+        n_jobs=THREADS,
+        n_threads=THREADS),
+    'TFA': XGBClassifier(
         max_depth=3,
         learning_rate=0.05,
         n_estimators=50,
@@ -78,7 +91,8 @@ _clfs = {
 # 'clfName': (startColumnName, endColumnName
 clfPos = {'BaseFeatures': ('gender', 'device_type'),
           'AgeGender': ('age_copy', 'US_oppositeGender_population'),
-          'DAC_TFA': ('DAC_year', 'TFA_hour_in_day'),
+          'DAC': ('DAC_year', 'DAC_season'),
+          'TFA': ('TFA_year', 'TFA_hour_in_day'),
           'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
           'AllFeatures': ('gender', 'print_confirmation$-unknown-')}
 
@@ -137,13 +151,13 @@ def predict(clfs, X):
     return p
 
 
-dcg5_at_k = [1.0, 0.63092975, 0.5, 0.43067656, 0.38685281, 0, 0, 0, 0, 0, 0, 0]
+dcg5_at_k = [1.0, 0.63092975, 0.5, 0.43067656, 0.38685281]
 
 
 def nDCG5(y, y_pred):
-    relevance = np.argsort(y_pred, axis=1)
-    relevanceOfTrueDestination = relevance[np.arange(len(y)), y]
-    return np.take(dcg5_at_k, relevanceOfTrueDestination).mean()
+    top5 = np.argsort(-y_pred, axis=1)[:, 0:5]
+    correctDestination = np.equal(top5, np.tile(y, (5, 1)).transpose())
+    return np.apply_along_axis(lambda x: (dcg5_at_k * x).sum(), 1, correctDestination).mean()
 
 
 nDCG5_score = make_scorer(nDCG5, greater_is_better=True, needs_proba=True)

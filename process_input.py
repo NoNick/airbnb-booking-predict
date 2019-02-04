@@ -15,6 +15,8 @@ def normalizeData(data):
     data['DAC_year'] = DAC.dt.year
     data['DAC_month'] = DAC.dt.month
     data['DAC_day_of_month'] = DAC.dt.day
+    data['DAC_yearmonthday'] = DAC.dt.strftime('%Y%m%d')
+    data['DAC_yearweek'] = DAC.dt.strftime('%Y%U')
     data['DAC_weekday'] = DAC.dt.weekday
     data['DAC_season'] = DAC.dt.month.apply(lambda x: (x % 12 + 3) // 3)
 
@@ -22,6 +24,8 @@ def normalizeData(data):
     data['TFA_year'] = TFA.dt.year
     data['TFA_month'] = TFA.dt.month
     data['TFA_day_of_month'] = TFA.dt.day
+    data['TFA_yearmonthday'] = TFA.dt.strftime('%Y%m%d')
+    data['TFA_yearweek'] = TFA.dt.strftime('%Y%U')
     data['TFA_weekday'] = TFA.dt.weekday
     data['TFA_season'] = TFA.dt.month.apply(lambda x: (x % 12 + 3) // 3)
     data['TFA_hour_in_day'] = TFA.dt.hour

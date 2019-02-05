@@ -127,7 +127,6 @@ for name, params in xgb_param.items():
     endColumn = data.columns.get_loc(clfPos[name][1])
     clf.fit(data.iloc[:, beginColumn:endColumn], y)
 
-    print('=' * len(str(clf.best_params_)))
     print('\033[39m %s' % name)
     result = pd.DataFrame(clf.cv_results_).drop(['split0_train_score', 'split1_train_score', 'split2_train_score',
                                                 'mean_train_score', 'std_train_score', 'mean_score_time',
@@ -136,8 +135,4 @@ for name, params in xgb_param.items():
                                                  'param_missing', 'params', 'std_fit_time', 'std_test_score',
                                                  'split0_test_score', 'split1_test_score', 'split2_test_score'], axis=1)
     print(tabulate(result, headers='keys', tablefmt='psql'))
-    print()
-    print('Best params:')
-    print(str(clf.best_params_))
     print('\033[0m')
-    print('=' * len(str(clf.best_params_)))

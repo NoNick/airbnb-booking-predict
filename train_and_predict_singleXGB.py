@@ -18,12 +18,13 @@ le = LabelEncoder()
 y = le.fit_transform(labels)
 xgtrain = xgboost.DMatrix(data, label=y)
 
-clf = xgboost.XGBClassifier(max_depth=5,
+clf = xgboost.XGBClassifier(max_depth=8,
                             missing=NA_CONST,
-                            n_estimators=35,
+                            n_estimators=250,
                             subsample=0.5,
-                            colsample_bytree=0.3,
-                            objective='multi:softprob',
+                            colsample_bytree=0.5,
+                            objective='rank:ndcg',
+                            eval_metric='ndcg@5',
                             num_class=n_classes,
                             silent=False,
                             n_jobs=THREADS,

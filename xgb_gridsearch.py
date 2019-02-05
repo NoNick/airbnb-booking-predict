@@ -128,11 +128,11 @@ for name, params in xgb_param.items():
     clf.fit(data.iloc[:, beginColumn:endColumn], y)
 
     print('\033[39m %s' % name)
-    result = pd.DataFrame(clf.cv_results_).drop(['split0_train_score', 'split1_train_score', 'split2_train_score',
-                                                'mean_train_score', 'std_train_score', 'mean_score_time',
-                                                 'std_score_time', 'param_n_jobs', 'param_n_thread',
-                                                 'param_num_class', 'param_objective', 'param_silent',
-                                                 'param_missing', 'params', 'std_fit_time', 'std_test_score',
-                                                 'split0_test_score', 'split1_test_score', 'split2_test_score'], axis=1)
+    result = pd.DataFrame(clf.cv_results_)[['mean_fit_time', 'param_max_depth', 'param_n_estimators',
+                                            'param_subsample', 'param_colsample_bytree', 'mean_test_nDCG5',
+                                            'mean_test_AU_acc', 'mean_test_CA_acc', 'mean_test_DE_acc',
+                                            'mean_test_ES_acc', 'mean_test_FR_acc', 'mean_test_GB_acc',
+                                            'mean_test_IT_acc', 'mean_test_NDF_acc', 'mean_test_NL_acc',
+                                            'mean_test_PT_acc', 'mean_test_US_acc', 'mean_test_other_acc']]
     print(tabulate(result, headers='keys', tablefmt='psql'))
     print('\033[0m')

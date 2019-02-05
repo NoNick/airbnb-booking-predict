@@ -161,3 +161,10 @@ def nDCG5(y, y_pred):
 
 
 nDCG5_score = make_scorer(nDCG5, greater_is_better=True, needs_proba=True)
+
+
+def accuracy(classNumber, y, y_pred):
+    classIndices = (y == classNumber)
+    return (y_pred[classIndices] == classNumber).mean()
+
+

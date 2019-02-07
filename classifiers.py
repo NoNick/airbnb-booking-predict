@@ -12,90 +12,88 @@ THREADS = 4
 # 'clfName': classifierObj
 _clfs = {
     'BaseFeatures': XGBClassifier(
-        max_depth=5,
-        learning_rate=0.1,
-        n_estimators=100,
-        subsample=0.3,
-        colsample_bytree=0.15,
+        max_depth=4,
+        learning_rate=0.05,
+        n_estimators=200,
+        subsample=0.5,
+        colsample_bytree=0.5,
         missing=NA_CONST,
         objective='multi:softprob',
+        eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
     'AgeGender': XGBClassifier(
-        max_depth=5,
-        learning_rate=0.1,
+        max_depth=2,
+        learning_rate=0.05,
         n_estimators=75,
-        # learning_rate=0.1,
-        # n_estimators=70,
-        subsample=0.3,
-        colsample_bytree=0.3,
+        subsample=0.5,
+        colsample_bytree=0.5,
         missing=NA_CONST,
         objective='multi:softprob',
+        eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
-    'DAC': XGBClassifier(
-        max_depth=3,
+    'DAC_TFA': XGBClassifier(
+        max_depth=1,
         learning_rate=0.05,
         n_estimators=50,
-        # learning_rate=0.1,
-        # n_estimators=45,
-        subsample=0.5,
-        colsample_bytree=0.3,
+        subsample=0.9,
+        colsample_bytree=0.5,
         missing=NA_CONST,
         objective='multi:softprob',
-        num_class=12,
-        n_jobs=THREADS,
-        n_threads=THREADS),
-    'TFA': XGBClassifier(
-        max_depth=3,
-        learning_rate=0.05,
-        n_estimators=50,
-        # learning_rate=0.1,
-        # n_estimators=45,
-        subsample=0.5,
-        colsample_bytree=0.3,
-        missing=NA_CONST,
-        objective='multi:softprob',
+        eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
     'Actions': XGBClassifier(
-        max_depth=3,
-        learning_rate=0.1,
-        n_estimators=50,
-        # max_depth=4,
-        # learning_rate=0.1,
-        # n_estimators=50,
+        max_depth=1,
+        learning_rate=0.05,
+        n_estimators=25,
         subsample=0.5,
-        colsample_bytree=0.2,
+        colsample_bytree=0.3,
         missing=NA_CONST,
         objective='multi:softprob',
+        eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
         n_threads=THREADS),
     'AllFeatures': XGBClassifier(
-        max_depth=6,
-        learning_rate=0.01,
-        n_estimators=50,
-        subsample=0.7,
-        colsample_bytree=0.3,
+        max_depth=8,
         missing=NA_CONST,
-        objective='multi:softprob',
+        n_estimators=250,
+        subsample=0.5,
+        colsample_bytree=0.5,
+        objective='rank:ndcg',
+        eval_metric='ndcg@5',
         num_class=12,
+        silent=True,
         n_jobs=THREADS,
-        n_threads=THREADS
+        nthread=THREADS
     )
 }
 # 'clfName': (startColumnName, endColumnName
 clfPos = {'BaseFeatures': ('gender', 'device_type'),
           'AgeGender': ('age_copy', 'US_oppositeGender_population'),
-          'DAC': ('DAC_year', 'DAC_season'),
-          'TFA': ('TFA_year', 'TFA_hour_in_day'),
+          'DAC_TFA': ('DAC_year', 'TFA_hour_in_day'),
           'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
-          'AllFeatures': ('gender', 'print_confirmation$-unknown-')}
-
+          'AllFeatures': ('gender', 'print_confirmation$-unknown-'),
+          'BaseFeatures_NoNDF_NoUs': ('gender', 'device_type'),
+          'AgeGender_NoNDF_NoUS': ('age_copy', 'US_oppositeGender_population'),
+          'DAC_TFA_NoNDF_NoUS': ('DAC_year', 'TFA_hour_in_day'),
+          'Actions_NoNDF_NoUS': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
+          'AllFeatures_NoNDF_NoUS': ('gender', 'print_confirmation$-unknown-')
+          }
+# ['AU' 'CA' 'DE' 'ES' 'FR' 'GB' 'IT' 'NDF' 'NL' 'PT' 'US' 'other']
+excludeClasses = {'BaseFeatures_NoNDF_NoUS': [7, 10],
+                  'AgeGenderNoUS': [10],
+                  'AgeGenderNoNDF': [7],
+                  'AgeGenderNoNDF_NoUS': [7, 10],
+                  'DAC_TFA_NoNDF_NoUS': [7, 10],
+                  'DAC_TFA_NoNDF_NoUS_NoOther': [7, 10, 11],
+                  'Actions_NoNDF_NoUS': [7, 10],
+                  'ActionsNoNDF': [7]}
 
 def getClassifiersList(X):
     for name, clf in _clfs.items():
@@ -151,13 +149,23 @@ def predict(clfs, X):
     return p
 
 
-dcg5_at_k = [1.0, 0.63092975, 0.5, 0.43067656, 0.38685281]
+dcg5_at_k = np.array([1.0, 0.63092975, 0.5, 0.43067656, 0.38685281])
 
 
 def nDCG5(y, y_pred):
     top5 = np.argsort(-y_pred, axis=1)[:, 0:5]
-    correctDestination = np.equal(top5, np.tile(y, (5, 1)).transpose())
-    return np.apply_along_axis(lambda x: (dcg5_at_k * x).sum(), 1, correctDestination).mean()
+    sum = 0
+    for i in range(len(top5)):
+        sum += dcg5_at_k[top5[i] == y[i]].sum()
+    return sum / len(y)
+
+
+def DCG5_sum(y, y_pred):
+    top5 = np.argsort(-y_pred, axis=1)[:, 0:5]
+    sum = 0
+    for i in range(len(top5)):
+        sum += dcg5_at_k[top5[i] == y[i]].sum()
+    return sum
 
 
 nDCG5_score = make_scorer(nDCG5, greater_is_better=True, needs_proba=True)
@@ -168,3 +176,15 @@ def accuracy(classNumber, y, y_pred):
     return (y_pred[classIndices] == classNumber).mean()
 
 
+def getWeightsExcludingClasses(classesToExclude, y):
+    result = np.ones(len(y))
+    result[np.isin(y, classesToExclude, invert=True)] = .1
+    return result
+
+
+# formatted for StackingCVClassifier::fit
+def getDictionaryWithWeights(y):
+    result = {}
+    for name, classes in excludeClasses.items():
+        result[name + '__sample_weight'] = getWeightsExcludingClasses(classes, y)
+    return result

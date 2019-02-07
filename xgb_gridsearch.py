@@ -2,16 +2,19 @@ import numpy as np
 import pandas as pd
 import datetime
 import xgboost
+import warnings
 from sklearn.metrics import make_scorer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import GridSearchCV
 from tabulate import tabulate
 
-from classifiers import clfPos, nDCG5_score, accuracy
+from classifiers import clfPos, nDCG5_score, accuracy, excludeClasses, getWeightsExcludingClasses
 
 NA_CONST = -1
 THREADS = 4
 FOLDS = 3
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 n_classes = 12  # Same number of classes as in Airbnb competition.
 data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(NA_CONST)
@@ -40,7 +43,7 @@ scorers = {'nDCG5': nDCG5_score,
 
 xgb_param = {
     'BaseFeatures': {
-        'max_depth': [3, 4],
+        'max_depth': [4],
         'learning_rate': [0.05],
         'silent': [True],
         'n_jobs': [THREADS],
@@ -48,64 +51,41 @@ xgb_param = {
         'subsample': [0.5],
         'colsample_bytree': [0.5],
         'objective': ['multi:softprob'],
+        'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [200],
+        'n_estimators': [250],
         'missing': [NA_CONST]
     },
     'AgeGender': {
-        'max_depth': [2, 3],
+        'max_depth': [1],
         'learning_rate': [0.05],
         'silent': [True],
         'n_jobs': [THREADS],
         'n_thread': [THREADS],
-        'subsample': [0.5, 0.7],
+        'subsample': [0.5],
         'colsample_bytree': [0.5],
         'objective': ['multi:softprob'],
+        'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [75],
+        'n_estimators': [50],
         'missing': [NA_CONST]
     },
-    'DAC': {
-        'max_depth': [1, 2],
-        'learning_rate': [0.05],
-        'silent': [True],
-        'n_jobs': [THREADS],
-        'n_thread': [THREADS],
-        'subsample': [0.7, 0.9],
-        'colsample_bytree': [0.5],
-        'objective': ['multi:softprob'],
-        'num_class': [n_classes],
-        'n_estimators': [75],
-        'missing': [NA_CONST]
-    },
-    'TFA': {
+    'DAC_TFA': {
         'max_depth': [2],
         'learning_rate': [0.05],
         'silent': [True],
         'n_jobs': [THREADS],
         'n_thread': [THREADS],
-        'subsample': [0.3, 0.5],
+        'subsample': [0.9],
         'colsample_bytree': [0.5],
         'objective': ['multi:softprob'],
+        'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [75],
+        'n_estimators': [50],
         'missing': [NA_CONST]
     },
     'Actions': {
-        'max_depth': [3, 4],
-        'learning_rate': [0.05],
-        'silent': [True],
-        'n_jobs': [THREADS],
-        'n_thread': [THREADS],
-        'subsample': [0.7, 0.9],
-        'colsample_bytree': [0.5],
-        'objective': ['multi:softprob'],
-        'num_class': [n_classes],
-        'n_estimators': [100],
-        'missing': [NA_CONST]
-    },
-    'AllFeatures': {
-        'max_depth': [6, 7],
+        'max_depth': [1],
         'learning_rate': [0.05],
         'silent': [True],
         'n_jobs': [THREADS],
@@ -113,8 +93,9 @@ xgb_param = {
         'subsample': [0.5],
         'colsample_bytree': [0.5],
         'objective': ['multi:softprob'],
+        'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [100],
+        'n_estimators': [50],
         'missing': [NA_CONST]
     }
 }
@@ -125,11 +106,17 @@ for name, params in xgb_param.items():
                        verbose=2, refit=False, error_score=np.nan)
     beginColumn = data.columns.get_loc(clfPos[name][0])
     endColumn = data.columns.get_loc(clfPos[name][1])
-    clf.fit(data.iloc[:, beginColumn:endColumn], y)
+
+    if name in excludeClasses:
+        clf.fit(data.iloc[:, beginColumn:endColumn], y,
+                sample_weight=getWeightsExcludingClasses(excludeClasses.get(name), y))
+    else:
+        clf.fit(data.iloc[:, beginColumn:endColumn], y)
 
     print('\033[39m %s' % name)
     result = pd.DataFrame(clf.cv_results_)[['mean_fit_time', 'param_max_depth', 'param_n_estimators',
-                                            'param_subsample', 'param_colsample_bytree', 'mean_test_nDCG5',
+                                            'param_subsample', 'param_colsample_bytree',
+                                            'mean_test_nDCG5', 'mean_train_nDCG5',
                                             'mean_test_AU_acc', 'mean_test_CA_acc', 'mean_test_DE_acc',
                                             'mean_test_ES_acc', 'mean_test_FR_acc', 'mean_test_GB_acc',
                                             'mean_test_IT_acc', 'mean_test_NDF_acc', 'mean_test_NL_acc',

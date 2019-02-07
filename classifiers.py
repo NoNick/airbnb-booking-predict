@@ -18,7 +18,7 @@ _clfs = {
         subsample=0.5,
         colsample_bytree=0.5,
         missing=NA_CONST,
-        objective='multi:softprob',
+        objective='rank:ndcg',
         eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
@@ -30,7 +30,7 @@ _clfs = {
         subsample=0.5,
         colsample_bytree=0.5,
         missing=NA_CONST,
-        objective='multi:softprob',
+        objective='rank:ndcg',
         eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
@@ -42,7 +42,7 @@ _clfs = {
         subsample=0.9,
         colsample_bytree=0.5,
         missing=NA_CONST,
-        objective='multi:softprob',
+        objective='rank:ndcg',
         eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
@@ -54,7 +54,7 @@ _clfs = {
         subsample=0.5,
         colsample_bytree=0.3,
         missing=NA_CONST,
-        objective='multi:softprob',
+        objective='rank:ndcg',
         eval_metric='ndcg@5',
         num_class=12,
         n_jobs=THREADS,
@@ -77,23 +77,16 @@ _clfs = {
 clfPos = {'BaseFeatures': ('gender', 'device_type'),
           'AgeGender': ('age_copy', 'US_oppositeGender_population'),
           'DAC_TFA': ('DAC_year', 'TFA_hour_in_day'),
+          'DAC': ('DAC_year', 'DAC_season'),
+          'TFA': ('TFA_year', 'TFA_hour_in_day'),
           'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
           'AllFeatures': ('gender', 'print_confirmation$-unknown-'),
-          'BaseFeatures_NoNDF_NoUs': ('gender', 'device_type'),
-          'AgeGender_NoNDF_NoUS': ('age_copy', 'US_oppositeGender_population'),
-          'DAC_TFA_NoNDF_NoUS': ('DAC_year', 'TFA_hour_in_day'),
-          'Actions_NoNDF_NoUS': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
-          'AllFeatures_NoNDF_NoUS': ('gender', 'print_confirmation$-unknown-')
           }
 # ['AU' 'CA' 'DE' 'ES' 'FR' 'GB' 'IT' 'NDF' 'NL' 'PT' 'US' 'other']
-excludeClasses = {'BaseFeatures_NoNDF_NoUS': [7, 10],
-                  'AgeGenderNoUS': [10],
-                  'AgeGenderNoNDF': [7],
-                  'AgeGenderNoNDF_NoUS': [7, 10],
-                  'DAC_TFA_NoNDF_NoUS': [7, 10],
-                  'DAC_TFA_NoNDF_NoUS_NoOther': [7, 10, 11],
-                  'Actions_NoNDF_NoUS': [7, 10],
-                  'ActionsNoNDF': [7]}
+underweightClasses = {'BaseFeatures': [7, 10],
+                  'AgeGender': [7, 10],
+                  'DAC_TFA': [7, 10],
+                  'Actions': [7, 10]}
 
 def getClassifiersList(X):
     for name, clf in _clfs.items():
@@ -160,6 +153,11 @@ def nDCG5(y, y_pred):
     return sum / len(y)
 
 
+def nDCG5_NoNDF_NoUS(y, y_pred):
+    indices = np.isin(y, [7, 10], invert=True)
+    return nDCG5(y[indices], y_pred[indices])
+
+
 def DCG5_sum(y, y_pred):
     top5 = np.argsort(-y_pred, axis=1)[:, 0:5]
     sum = 0
@@ -169,6 +167,7 @@ def DCG5_sum(y, y_pred):
 
 
 nDCG5_score = make_scorer(nDCG5, greater_is_better=True, needs_proba=True)
+nDCG5_NoNDF_NoUS_score = make_scorer(nDCG5_NoNDF_NoUS, greater_is_better=True, needs_proba=True)
 
 
 def accuracy(classNumber, y, y_pred):
@@ -176,15 +175,21 @@ def accuracy(classNumber, y, y_pred):
     return (y_pred[classIndices] == classNumber).mean()
 
 
-def getWeightsExcludingClasses(classesToExclude, y):
+# makes prediction of classesToExclude as valuable as prediction of least numbered class in y
+def getWeightsLowerClasses(classesToUnderweight, y):
+    unique, counts = np.unique(y, return_counts=True)
+    countByUnique = dict(zip(unique, counts))
+
     result = np.ones(len(y))
-    result[np.isin(y, classesToExclude, invert=True)] = .1
+    for classToUnderWeight in classesToUnderweight:
+        newWeight = min(counts) / countByUnique[classToUnderWeight]
+        result[y == classToUnderWeight] = newWeight
     return result
 
 
 # formatted for StackingCVClassifier::fit
 def getDictionaryWithWeights(y):
     result = {}
-    for name, classes in excludeClasses.items():
-        result[name + '__sample_weight'] = getWeightsExcludingClasses(classes, y)
+    for name, classes in underweightClasses.items():
+        result[name + '__sample_weight'] = getWeightsLowerClasses(classes, y)
     return result

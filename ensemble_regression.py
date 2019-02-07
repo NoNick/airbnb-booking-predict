@@ -4,9 +4,11 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.preprocessing import LabelBinarizer
 from tabulate import tabulate
 
+from classifiers import nDCG5
+
 
 class EnsembleRegression(BaseEstimator, ClassifierMixin):
-    def __init__(self, x0, scoreFun, clfNames, yNames, n_classes=12):
+    def __init__(self, x0, clfNames, yNames, n_classes=12):
         """
         :param x0: vector of  (n_classes * n_classifiers) elements with initial weights
         :param scoreFun: takes (y, y_pred) where y is sample labels vector and y_pred is samples * n_classes matrix
@@ -14,7 +16,6 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
         :param clfNames: names of labels (y) for weights print
         :param n_classes:
         """
-        self.scoreFun = scoreFun
         self.classesN = n_classes
         self.clfNames = clfNames
         self.yNames = yNames
@@ -24,7 +25,6 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
     def get_params(self, deep=True):
         return {
             'x0': self.w,
-            'scoreFun': self.scoreFun,
             'n_classes': self.classesN,
             'clfNames': self.clfNames,
             'yNames': self.yNames
@@ -33,7 +33,7 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
     def _loss(self, w, X, y):
         # normalization
         # w[w < 0] = 0
-        w_range = np.arange(len(w)) % self.classesN
+        w_range = np.arange(w.shape[0]) % self.classesN
         for i in range(self.classesN):
             wi_sum = np.sum(w[w_range == i])
             if wi_sum != 0:
@@ -42,8 +42,8 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
         probas = np.clip(self.predict_proba(X, w), 1e-8, 1 - 1e-8)
         y2D = LabelBinarizer().fit(y).transform(y)
         return np.average(-(y2D * np.log(probas)).sum(axis=1))
-        #probas = self.predict_proba(X, w)
-        #return X.shape[0] - self.scoreFun(y, probas)
+        # probas = self.predict_proba(X, w)
+        # return 1 - nDCG5(y, probas)
 
     def fit(self, X, y):
         """
@@ -57,8 +57,8 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
                           options={
                               'disp': 10,
                               'eps': 0.02,
-                              'maxiter': 500,
-                              'ftol': 1e-9,
+                              'maxiter': 200,
+                              'ftol': 1e-5,
                               'gtol': 1e-9,
                               'maxls': 20
                           })

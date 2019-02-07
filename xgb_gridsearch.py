@@ -17,7 +17,7 @@ FOLDS = 3
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-n_classes = 12  # Same number of classes as in Airbnb competition.
+n_classes = 12
 data = pd.read_csv('data/train_users_2_norm.csv').drop('user_id', axis=1).fillna(NA_CONST)
 labels = data.pop('country_destination')
 
@@ -45,7 +45,7 @@ scorers = {'nDCG5': nDCG5_score,
 
 xgb_param = {
     'BaseFeatures': {
-        'max_depth': [3, 4],
+        'max_depth': [4],
         'learning_rate': [0.05],
         'silent': [True],
         'n_jobs': [THREADS],
@@ -55,7 +55,7 @@ xgb_param = {
         'objective': ['rank:ndcg'],
         'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [200],
+        'n_estimators': [250],
         'missing': [NA_CONST]
     },
     'AgeGender': {
@@ -73,22 +73,22 @@ xgb_param = {
         'missing': [NA_CONST]
     },
     'DAC_TFA': {
-        'max_depth': [1],
-        'learning_rate': [0.05],
+        'max_depth': [1, 2],
+        'learning_rate': [0.025],
         'silent': [True],
         'n_jobs': [THREADS],
         'n_thread': [THREADS],
-        'subsample': [0.5],
+        'subsample': [0.3],
         'colsample_bytree': [0.5],
         'objective': ['rank:ndcg'],
         'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [35, 50, 75],
+        'n_estimators': [50],
         'missing': [NA_CONST]
     },
     'Actions': {
-        'max_depth': [2],
-        'learning_rate': [0.05],
+        'max_depth': [1],
+        'learning_rate': [0.025],
         'silent': [True],
         'n_jobs': [THREADS],
         'n_thread': [THREADS],
@@ -97,7 +97,7 @@ xgb_param = {
         'objective': ['rank:ndcg'],
         'eval_metric': ['ndcg@5'],
         'num_class': [n_classes],
-        'n_estimators': [35, 50],
+        'n_estimators': [100],
         'missing': [NA_CONST]
     }
 }

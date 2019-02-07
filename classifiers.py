@@ -14,7 +14,7 @@ _clfs = {
     'BaseFeatures': XGBClassifier(
         max_depth=4,
         learning_rate=0.05,
-        n_estimators=200,
+        n_estimators=250,
         subsample=0.5,
         colsample_bytree=0.5,
         missing=NA_CONST,
@@ -24,9 +24,9 @@ _clfs = {
         n_jobs=THREADS,
         n_threads=THREADS),
     'AgeGender': XGBClassifier(
-        max_depth=2,
+        max_depth=1,
         learning_rate=0.05,
-        n_estimators=75,
+        n_estimators=50,
         subsample=0.5,
         colsample_bytree=0.5,
         missing=NA_CONST,
@@ -39,7 +39,7 @@ _clfs = {
         max_depth=1,
         learning_rate=0.05,
         n_estimators=50,
-        subsample=0.9,
+        subsample=0.3,
         colsample_bytree=0.5,
         missing=NA_CONST,
         objective='rank:ndcg',
@@ -49,10 +49,10 @@ _clfs = {
         n_threads=THREADS),
     'Actions': XGBClassifier(
         max_depth=1,
-        learning_rate=0.05,
-        n_estimators=25,
-        subsample=0.5,
-        colsample_bytree=0.3,
+        learning_rate=0.025,
+        n_estimators=75,
+        subsample=0.3,
+        colsample_bytree=0.5,
         missing=NA_CONST,
         objective='rank:ndcg',
         eval_metric='ndcg@5',
@@ -80,13 +80,12 @@ clfPos = {'BaseFeatures': ('gender', 'device_type'),
           'DAC': ('DAC_year', 'DAC_season'),
           'TFA': ('TFA_year', 'TFA_hour_in_day'),
           'Actions': ('personalize$wishlist_content_update', 'print_confirmation$-unknown-'),
-          'AllFeatures': ('gender', 'print_confirmation$-unknown-'),
-          }
+          'AllFeatures': ('gender', 'print_confirmation$-unknown-')}
 # ['AU' 'CA' 'DE' 'ES' 'FR' 'GB' 'IT' 'NDF' 'NL' 'PT' 'US' 'other']
 underweightClasses = {'BaseFeatures': [7, 10],
-                  'AgeGender': [7, 10],
-                  'DAC_TFA': [7, 10],
-                  'Actions': [7, 10]}
+                      'AgeGender': [7, 10],
+                      'DAC_TFA': [7, 10],
+                      'Actions': [7, 10]}
 
 def getClassifiersList(X):
     for name, clf in _clfs.items():

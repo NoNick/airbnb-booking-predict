@@ -56,9 +56,9 @@ class EnsembleRegression(BaseEstimator, ClassifierMixin):
                           bounds=([(0, 1)] * len(self.w)),
                           options={
                               'disp': 10,
-                              'eps': 0.02,
+                              'eps': 0.05,
                               'maxiter': 200,
-                              'ftol': 1e-5,
+                              'ftol': 1e-8,
                               'gtol': 1e-9,
                               'maxls': 20
                           })

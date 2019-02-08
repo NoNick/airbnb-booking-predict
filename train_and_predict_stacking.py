@@ -11,7 +11,7 @@ from ensemble_regression import EnsembleRegression
 from classifiers import getClassifiersList, NA_CONST, nDCG5, getDictionaryWithWeights, DCG5_sum
 from submission_utils import saveResult
 
-FOLDS = 3
+FOLDS = 5
 META_FOLDS = 3
 THREADS = 4
 
@@ -31,11 +31,12 @@ for name, clf in clfs.items():
     pipes.append(Pipeline([('clm_selector', ColumnSelector(cols=range(clf.beginColumn, clf.endColumn))), (name, clf)]))
 
 start = datetime.now()
-x0 = np.array([1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
-               #1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
-               1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
-               1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
-               0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0])
+x0 = np.array([# 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
+               # 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
+               # 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
+               # 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1,
+               0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0,
+               1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1])
 metaClassifier = CalibratedClassifierCV(
     EnsembleRegression(x0, list(clfs.keys()), le.classes_),
     method='isotonic',
@@ -51,6 +52,6 @@ Xid = test.pop('id')
 saveResult(Xid, sclf.predict_proba(test.values), le, 'predict/stacking.csv')
 print('Submission predict/stacking.csv is predicted in ' + str(datetime.now() - start))
 
-trainPredicted = sclf.predict_proba(data)
+trainPredicted = sclf.predict_proba(data.values)
 print('Test set nDCG5 score: ' + str(nDCG5(labelsEncoded, trainPredicted)))
 print('Total time: ' + str(datetime.now() - totalStart))
